@@ -1,0 +1,37 @@
+# Flynn AAC Development Progress
+
+## M1: Core AAC Status
+- [ ] FLY-4: Design system (warm, sensory-friendly)
+- [ ] FLY-5: Symbol tap audio
+- [ ] FLY-6: Phrase builder
+- [ ] FLY-7: Category navigation
+- [ ] FLY-8: Language toggle
+- [ ] FLY-9: Grid size adjustment
+- [ ] FLY-10: Offline functionality
+- [ ] FLY-11: Feedback system
+
+## Session Log
+
+### 2026-01-24 - TDD Setup Complete
+- iOS project structure created with SwiftUI + MV architecture
+- All test files written with TDD-style failing tests
+- Build passes, 89 tests run with 52 expected failures
+- PRD created with 8 requirements (FLY-4 through FLY-11)
+- Linear integration scripts ready (bun-based)
+- Ralph loop script ready at ralph-once.sh
+
+Test Suite Status (all failing for TDD):
+- AudioServiceTests: FAILING (4 issues) → FLY-5
+- CategoryTests: FAILING (1 issue) → FLY-7
+- DesignSystemTests: FAILING (21 issues) → FLY-4
+- FeedbackTests: FAILING (8 issues) → FLY-11
+- GridTests: FAILING (1 issue) → FLY-9
+- LanguageTests: FAILING (2 issues) → FLY-8
+- OfflineTests: FAILING (9 issues) → FLY-10
+- PhraseEngineTests: FAILING (3 issues) → FLY-6
+- PhraseTests: FAILING (1 issue) → FLY-6
+- SymbolTests: FAILING (3 issues) → FLY-5
+
+Total: 89 tests, 53 issues, 0 passing suites
+
+Ready for: ./ralph-once.sh 1
