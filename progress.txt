@@ -189,3 +189,36 @@ Implementation Details:
 Build: SUCCESS
 Tests: 89 tests, 23 issues remaining (down from 24)
 Linear: FLY-8 marked as Done
+
+### 2026-01-24 - FLY-9 Complete: Adjustable Grid Size
+- Implemented grid size management in SymbolStore with position preservation
+- Added canContractGrid method to prevent data loss when shrinking grid
+- Added addSymbol method for dynamic symbol management
+- Implemented calculatedTouchTargetSize in AppSettings for accessibility
+- All grid sizes maintain >= 60pt touch targets (accessibility requirement)
+- Existing symbols preserve [row, col] positions during grid expansion (LAMP)
+- Grid contraction blocked if symbols exist in outer cells (safety check)
+- New cells added to right and bottom edges only (LAMP consistency)
+
+GridTests: 9/9 passing (100%)
+- ✓ defaultGridSizeIs4x4: PASSING
+- ✓ gridSizeCanBeChanged: PASSING
+- ✓ existingSymbolsKeepPositionsOnExpand: PASSING (LAMP requirement!)
+- ✓ newCellsAddedToRightAndBottomOnExpand: PASSING
+- ✓ contractingGridWithSymbolsInOuterCellsShowsWarning: PASSING (safety!)
+- ✓ contractingEmptyOuterCellsSucceeds: PASSING
+- ✓ touchTargetsAre60PointsMinimum: PASSING (accessibility!)
+- ✓ touchTargetsRemain60PointsAtAllGridSizes: PASSING
+- ✓ gridPositionIsHashable: PASSING
+
+Implementation Details:
+- AppSettings.gridRows and gridColumns are configurable (default 4x4)
+- AppSettings.calculatedTouchTargetSize computes actual touch target based on screen size
+- SymbolStore.canContractGrid checks if any symbols would be lost in contraction
+- SymbolStore.addSymbol allows dynamic addition of symbols to root grid
+- GridPosition is Hashable for efficient position tracking and comparison
+- All tests use async/await for actor-based SymbolStore operations
+
+Build: SUCCESS
+Tests: 89 tests, 22 issues remaining (down from 23)
+Linear: FLY-9 marked as Done

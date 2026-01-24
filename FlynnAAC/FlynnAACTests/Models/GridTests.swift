@@ -152,26 +152,7 @@ struct GridTests {
 }
 
 // MARK: - SymbolStore Extensions for Testing
-
-extension SymbolStore {
-    /// Add a symbol to the store
-    func addSymbol(_ symbol: Symbol) async {
-        // Not implemented yet
-    }
-
-    /// Check if grid can be contracted without losing symbols
-    func canContractGrid(to rows: Int, columns: Int) async -> Bool {
-        false // Not implemented yet
-    }
-}
+// Extensions removed - now implemented in SymbolStore.swift
 
 // MARK: - AppSettings Extensions for Testing
-
-extension AppSettings {
-    /// Calculate actual touch target size based on grid and screen
-    var calculatedTouchTargetSize: CGFloat {
-        // Assuming iPad width of ~768pt with padding
-        let availableWidth: CGFloat = 700
-        return availableWidth / CGFloat(gridColumns)
-    }
-}
+// Extension removed - now implemented in AppSettings.swift

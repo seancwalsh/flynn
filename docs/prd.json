@@ -102,7 +102,7 @@
         "Verify warning dialog appears",
         "Verify touch targets are >= 60x60 points at all sizes"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-10",

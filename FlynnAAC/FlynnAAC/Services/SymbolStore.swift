@@ -39,6 +39,33 @@ actor SymbolStore {
         return category.subcategories
     }
 
+    // MARK: - Grid Management (FLY-9)
+
+    /// Add a symbol to the store
+    func addSymbol(_ symbol: Symbol) {
+        rootSymbols.append(symbol)
+    }
+
+    /// Check if grid can be contracted without losing symbols
+    /// Returns false if any symbols exist in cells that would be removed
+    func canContractGrid(to rows: Int, columns: Int) -> Bool {
+        // Check root symbols
+        for symbol in rootSymbols {
+            if symbol.position.row >= rows || symbol.position.col >= columns {
+                return false
+            }
+        }
+
+        // Check root categories
+        for category in rootCategories {
+            if category.position.row >= rows || category.position.col >= columns {
+                return false
+            }
+        }
+
+        return true
+    }
+
     private static func createDefaultSymbols() -> [Symbol] {
         // Default symbols for testing - will be replaced with Core Data
         return [

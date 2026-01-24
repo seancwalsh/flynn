@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 struct AppSettings: Codable {
     var language: Language
@@ -35,6 +36,13 @@ struct AppSettings: Codable {
 
     var minimumTouchTarget: CGFloat {
         60.0
+    }
+
+    /// Calculate actual touch target size based on grid and screen
+    /// Assuming iPad width of ~768pt with padding
+    var calculatedTouchTargetSize: CGFloat {
+        let availableWidth: CGFloat = 700
+        return availableWidth / CGFloat(gridColumns)
     }
 
     // MARK: - Persistence
