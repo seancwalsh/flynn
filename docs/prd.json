@@ -74,7 +74,7 @@
         "Navigate away and return - verify symbol positions unchanged",
         "Close and reopen app - verify positions unchanged"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-8",

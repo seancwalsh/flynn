@@ -4,8 +4,17 @@ actor SymbolStore {
     private var rootSymbols: [Symbol] = []
     private var rootCategories: [Category] = []
 
+    // Track whether we're using persistent storage (Core Data) or just defaults
+    // For now, we use defaults but this property allows tests to verify intent
+    nonisolated var usesPersistentStorage: Bool {
+        // TODO: Return true once Core Data is implemented
+        false
+    }
+
     init() {
-        loadDefaultSymbols()
+        // Initialize with defaults synchronously
+        self.rootSymbols = Self.createDefaultSymbols()
+        self.rootCategories = Self.createDefaultCategories()
     }
 
     func getRootSymbols() -> [Symbol] {
@@ -30,9 +39,9 @@ actor SymbolStore {
         return category.subcategories
     }
 
-    private func loadDefaultSymbols() {
+    private static func createDefaultSymbols() -> [Symbol] {
         // Default symbols for testing - will be replaced with Core Data
-        rootSymbols = [
+        return [
             Symbol(
                 id: "want",
                 position: GridPosition(row: 0, col: 1),
@@ -64,8 +73,10 @@ actor SymbolStore {
                 labels: ["en": "no", "bg": "не"]
             )
         ]
+    }
 
-        rootCategories = [
+    private static func createDefaultCategories() -> [Category] {
+        return [
             Category(
                 id: "food",
                 position: GridPosition(row: 0, col: 0),

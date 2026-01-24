@@ -34,6 +34,9 @@ struct ContentView: View {
                 },
                 onCategoryTapped: { category in
                     viewModel.navigateToCategory(category)
+                },
+                onBackTapped: {
+                    viewModel.navigateBack()
                 }
             )
         }
