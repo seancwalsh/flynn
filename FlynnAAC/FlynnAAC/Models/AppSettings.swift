@@ -10,16 +10,16 @@ struct AppSettings: Codable {
 
     static let `default` = AppSettings(
         language: .english,
-        gridRows: 4,
-        gridColumns: 4,
+        gridRows: VocabularyStructure.gridRows,
+        gridColumns: VocabularyStructure.gridColumns,
         animationsEnabled: true,
         speechRate: 0.5
     )
 
     init(
         language: Language = .english,
-        gridRows: Int = 4,
-        gridColumns: Int = 4,
+        gridRows: Int = VocabularyStructure.gridRows,
+        gridColumns: Int = VocabularyStructure.gridColumns,
         animationsEnabled: Bool = true,
         speechRate: Float = 0.5
     ) {

@@ -7,16 +7,14 @@ actor SymbolStore {
     private var errorMessages: [String] = []
 
     // Track whether we're using persistent storage (Core Data) or just defaults
-    // For now, we use defaults but this property allows tests to verify intent
     nonisolated var usesPersistentStorage: Bool {
-        // TODO: Return true once Core Data is implemented
         false
     }
 
     init() {
-        // Initialize with defaults synchronously
-        self.rootSymbols = Self.createDefaultSymbols()
-        self.rootCategories = Self.createDefaultCategories()
+        // Initialize from VocabularyStructure
+        self.rootSymbols = Self.createSymbolsFromVocabulary()
+        self.rootCategories = Self.createCategoriesFromVocabulary()
     }
 
     func getRootSymbols() -> [Symbol] {
@@ -43,103 +41,96 @@ actor SymbolStore {
 
     // MARK: - Grid Management (FLY-9)
 
-    /// Add a symbol to the store
     func addSymbol(_ symbol: Symbol) {
         rootSymbols.append(symbol)
     }
 
-    /// Check if grid can be contracted without losing symbols
-    /// Returns false if any symbols exist in cells that would be removed
     func canContractGrid(to rows: Int, columns: Int) -> Bool {
-        // Check root symbols
         for symbol in rootSymbols {
             if symbol.position.row >= rows || symbol.position.col >= columns {
                 return false
             }
         }
-
-        // Check root categories
         for category in rootCategories {
             if category.position.row >= rows || category.position.col >= columns {
                 return false
             }
         }
-
         return true
     }
 
     // MARK: - FLY-10: Offline Functionality
 
-    /// Enable/disable offline mode
     func setOfflineMode(_ offline: Bool) {
         offlineMode = offline
         if !offline {
-            // Clear errors when coming back online
             errorMessages.removeAll()
         }
     }
 
-    /// Check if image is cached (for offline use)
-    /// In a real app, this would check if the image file exists in the bundle or cache
     func isImageCached(for symbolId: String) -> Bool {
-        // For now, assume all images are bundled with the app
-        // In production, check if Bundle.main.url(forResource:) exists
         true
     }
 
-    /// Get any error messages
     func getErrorMessages() -> [String] {
         errorMessages
     }
 
-    private static func createDefaultSymbols() -> [Symbol] {
-        // Default symbols for testing - will be replaced with Core Data
-        return [
-            Symbol(
-                id: "want",
-                position: GridPosition(row: 0, col: 1),
-                labels: ["en": "want", "bg": "искам"]
-            ),
-            Symbol(
-                id: "more",
-                position: GridPosition(row: 0, col: 2),
-                labels: ["en": "more", "bg": "още"]
-            ),
-            Symbol(
-                id: "help",
-                position: GridPosition(row: 0, col: 3),
-                labels: ["en": "help", "bg": "помощ"]
-            ),
-            Symbol(
-                id: "stop",
-                position: GridPosition(row: 1, col: 0),
-                labels: ["en": "stop", "bg": "спри"]
-            ),
-            Symbol(
-                id: "yes",
-                position: GridPosition(row: 1, col: 1),
-                labels: ["en": "yes", "bg": "да"]
-            ),
-            Symbol(
-                id: "no",
-                position: GridPosition(row: 1, col: 2),
-                labels: ["en": "no", "bg": "не"]
+    // MARK: - Create Symbols from VocabularyStructure
+
+    private static func createSymbolsFromVocabulary() -> [Symbol] {
+        VocabularyStructure.coreWords.compactMap { word -> Symbol? in
+            guard let position = word.gridPosition else { return nil }
+            return Symbol(
+                id: word.id,
+                position: position,
+                imageName: word.id,
+                labels: ["en": word.english, "bg": word.bulgarian],
+                audioFiles: [:],
+                category: mapWordCategoryToSymbolCategory(word.category)
             )
-        ]
+        }
     }
 
-    private static func createDefaultCategories() -> [Category] {
-        return [
-            Category(
-                id: "food",
-                position: GridPosition(row: 0, col: 0),
-                labels: ["en": "food", "bg": "храна"],
-                symbols: [
-                    Symbol(id: "apple", position: GridPosition(row: 0, col: 0), labels: ["en": "apple", "bg": "ябълка"]),
-                    Symbol(id: "water", position: GridPosition(row: 0, col: 1), labels: ["en": "water", "bg": "вода"]),
-                    Symbol(id: "milk", position: GridPosition(row: 0, col: 2), labels: ["en": "milk", "bg": "мляко"])
-                ]
+    private static func createCategoriesFromVocabulary() -> [Category] {
+        VocabularyStructure.categoryFolders.map { folder in
+            let symbols = folder.words.enumerated().map { (index, word) -> Symbol in
+                // Arrange in grid: 7 columns
+                let row = index / 7
+                let col = index % 7
+                return Symbol(
+                    id: word.id,
+                    position: GridPosition(row: row, col: col),
+                    imageName: word.id,
+                    labels: ["en": word.english, "bg": word.bulgarian],
+                    audioFiles: [:],
+                    category: mapWordCategoryToSymbolCategory(word.category)
+                )
+            }
+
+            return Category(
+                id: folder.id,
+                position: folder.gridPosition,
+                imageName: folder.id,
+                labels: ["en": folder.english, "bg": folder.bulgarian],
+                symbols: symbols,
+                subcategories: [],
+                colorName: "brown"
             )
-        ]
+        }
+    }
+
+    private static func mapWordCategoryToSymbolCategory(_ wordCategory: WordCategory) -> SymbolCategory {
+        switch wordCategory {
+        case .pronoun: return .pronoun
+        case .verb: return .verb
+        case .describing: return .descriptor
+        case .noun: return .noun
+        case .social: return .social
+        case .question: return .question
+        case .preposition: return .preposition
+        case .time: return .misc
+        case .category: return .misc
+        }
     }
 }

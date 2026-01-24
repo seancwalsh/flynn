@@ -1,5 +1,25 @@
 import SwiftUI
 
+// Unified grid item to enable position-based sorting
+enum GridItemType: Identifiable {
+    case symbol(Symbol)
+    case category(Category)
+
+    var id: String {
+        switch self {
+        case .symbol(let s): return "symbol-\(s.id)"
+        case .category(let c): return "category-\(c.id)"
+        }
+    }
+
+    var position: GridPosition {
+        switch self {
+        case .symbol(let s): return s.position
+        case .category(let c): return c.position
+        }
+    }
+}
+
 struct SymbolGridView: View {
     let category: Category?
     let language: Language
@@ -8,8 +28,7 @@ struct SymbolGridView: View {
     let onBackTapped: () -> Void
 
     @State private var settings = AppSettings.default
-    @State private var symbols: [Symbol] = []
-    @State private var categories: [Category] = []
+    @State private var gridItems: [GridItemType] = []
     @State private var store = SymbolStore()
 
     private var columns: [GridItem] {
@@ -24,22 +43,22 @@ struct SymbolGridView: View {
                     BackButton(action: onBackTapped)
                 }
 
-                // Categories
-                ForEach(categories) { cat in
-                    CategoryCell(
-                        category: cat,
-                        language: language,
-                        onTap: { onCategoryTapped(cat) }
-                    )
-                }
-
-                // Symbols
-                ForEach(symbols) { symbol in
-                    SymbolCell(
-                        symbol: symbol,
-                        language: language,
-                        onTap: { onSymbolTapped(symbol) }
-                    )
+                // All items sorted by position
+                ForEach(gridItems) { item in
+                    switch item {
+                    case .symbol(let symbol):
+                        SymbolCell(
+                            symbol: symbol,
+                            language: language,
+                            onTap: { onSymbolTapped(symbol) }
+                        )
+                    case .category(let cat):
+                        CategoryCell(
+                            category: cat,
+                            language: language,
+                            onTap: { onCategoryTapped(cat) }
+                        )
+                    }
                 }
             }
             .padding(FlynnTheme.Layout.screenMargin)
@@ -62,12 +81,22 @@ struct SymbolGridView: View {
         let loadedSymbols = await store.getSymbols(for: category)
         let loadedCategories = await store.getCategories(for: category)
 
+        // Combine and sort by position (row first, then column)
+        var items: [GridItemType] = []
+        items.append(contentsOf: loadedSymbols.map { .symbol($0) })
+        items.append(contentsOf: loadedCategories.map { .category($0) })
+        items.sort { a, b in
+            if a.position.row != b.position.row {
+                return a.position.row < b.position.row
+            }
+            return a.position.col < b.position.col
+        }
+
         let elapsed = Date().timeIntervalSince(start)
 
         // Update state on main thread
         await MainActor.run {
-            self.symbols = loadedSymbols
-            self.categories = loadedCategories
+            self.gridItems = items
         }
 
         // Log if we exceed 200ms target

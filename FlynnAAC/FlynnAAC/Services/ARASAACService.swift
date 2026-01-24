@@ -8,49 +8,10 @@ actor ARASAACService {
     private let cacheDirectory: URL
     private let fileManager = FileManager.default
 
-    // Mapping of app symbol IDs to ARASAAC pictogram IDs
-    // Find IDs at: https://arasaac.org/pictograms/search
-    private let pictogramMapping: [String: Int] = [
-        // Core communication
-        "want": 5441,      // want
-        "more": 5508,      // more
-        "help": 32648,     // help
-        "stop": 7196,      // stop
-        "yes": 5584,       // yes
-        "no": 5526,        // no
-
-        // Food category
-        "food": 4610,      // food
-        "apple": 2462,     // apple
-        "water": 2816,     // water
-        "milk": 2445,      // milk
-
-        // Common actions
-        "go": 6483,        // go
-        "eat": 2397,       // eat
-        "drink": 2393,     // drink
-        "play": 3281,      // play
-        "sleep": 4641,     // sleep
-        "bathroom": 2500,  // bathroom
-
-        // People
-        "mom": 2471,       // mom
-        "dad": 2472,       // dad
-        "me": 6631,        // me
-        "you": 6668,       // you
-
-        // Feelings
-        "happy": 4618,     // happy
-        "sad": 4619,       // sad
-        "angry": 4609,     // angry
-        "tired": 4626,     // tired
-        "hurt": 4608,      // hurt
-
-        // Places
-        "home": 2499,      // home
-        "school": 2649,    // school
-        "outside": 4813    // outside
-    ]
+    // Use vocabulary structure's ARASAAC mapping
+    private var pictogramMapping: [String: Int] {
+        VocabularyStructure.arasaacMapping
+    }
 
     init() {
         let cachesURL = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!

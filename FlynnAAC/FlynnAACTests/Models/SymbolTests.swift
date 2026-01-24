@@ -91,28 +91,22 @@ struct SymbolTests {
 }
 
 // MARK: - Symbol Extensions for Testing
-// These need to be implemented in the actual Symbol model
 
 extension Symbol {
-    /// Initialize with LAMP category
-    init(id: String, position: GridPosition, category: SymbolCategory) {
-        self.init(id: id, position: position)
-        // Category not stored yet - needs implementation
-    }
-
-    /// The LAMP category type
+    /// The LAMP category type (alias for category property)
     var categoryType: SymbolCategory? {
-        nil // Not implemented yet
+        category
     }
 
     /// The display color based on category
     var displayColor: Color? {
-        nil // Not implemented yet
+        category?.color
     }
 
     /// Load a symbol from Core Data persistence
+    /// Note: Core Data persistence not yet implemented, so this returns nil
     static func loadFromPersistence(id: String) -> Symbol? {
-        nil // Not implemented yet
+        nil // Core Data persistence not implemented yet
     }
 }
 

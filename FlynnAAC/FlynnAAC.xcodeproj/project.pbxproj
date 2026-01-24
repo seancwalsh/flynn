@@ -17,6 +17,7 @@
 		E11AB500A /* ARASAACImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB500B /* ARASAACImageView.swift */; };
 		0308A8E24478DABBAAF515D5 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE0D9DF26F9F19AFDEE8309 /* Language.swift */; };
 		0384B581E5E5006BF56EB912 /* SymbolStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0912E15AA83142AE3F4ADC /* SymbolStore.swift */; };
+		VOCAB0001 /* VocabularyStructure.swift in Sources */ = {isa = PBXBuildFile; fileRef = VOCAB0002 /* VocabularyStructure.swift */; };
 		047E088E97798017E17CD2CD /* GridPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7044ECE1E93FB8DE84B570DD /* GridPosition.swift */; };
 		2C20D85D3F4B30C501576239 /* FeedbackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97F89A9FA1B72A76DF14A3D /* FeedbackTests.swift */; };
 		355BA1EBF8C67ABF28A23889 /* FlynnTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A77292E754CF2E2EFA7DC5 /* FlynnTheme.swift */; };
@@ -87,6 +88,7 @@
 		CE5AB088E03556D1DADAF2A1 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
 		D429F90A5D7373D8AB21BE50 /* CategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryTests.swift; sourceTree = "<group>"; };
 		D7153EFE8495A89332DDC456 /* Symbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbol.swift; sourceTree = "<group>"; };
+		VOCAB0002 /* VocabularyStructure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyStructure.swift; sourceTree = "<group>"; };
 		E0BBB2340B4B5152BAA04BD8 /* Phrase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phrase.swift; sourceTree = "<group>"; };
 		EA0390B09D0A451B94EF8D0F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002 /* Audio */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Audio; sourceTree = "<group>"; };
@@ -151,6 +153,7 @@
 				7CE0D9DF26F9F19AFDEE8309 /* Language.swift */,
 				E0BBB2340B4B5152BAA04BD8 /* Phrase.swift */,
 				D7153EFE8495A89332DDC456 /* Symbol.swift */,
+				VOCAB0002 /* VocabularyStructure.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -385,6 +388,7 @@
 				C827E90B2FEE106267AE2E8A /* SymbolCell.swift in Sources */,
 				FB03F52D70374FA8BDC3A84C /* SymbolGridView.swift in Sources */,
 				0384B581E5E5006BF56EB912 /* SymbolStore.swift in Sources */,
+				VOCAB0001 /* VocabularyStructure.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
