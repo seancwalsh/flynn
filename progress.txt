@@ -5,7 +5,7 @@
 - [x] FLY-5: Symbol tap audio
 - [x] FLY-6: Phrase builder
 - [x] FLY-7: Category navigation
-- [ ] FLY-8: Language toggle
+- [x] FLY-8: Language toggle
 - [ ] FLY-9: Grid size adjustment
 - [ ] FLY-10: Offline functionality
 - [ ] FLY-11: Feedback system
@@ -154,3 +154,38 @@ Known Limitation:
 Build: SUCCESS
 Tests: 89 tests, 23 issues remaining (down from 24)
 Linear: FLY-7 marked as Done
+
+### 2026-01-24 - FLY-8 Complete: Language Toggle
+- Implemented AppSettings persistence with UserDefaults
+- Language settings now persist across app restarts
+- AACViewModel loads persisted language on initialization
+- Language toggle saves immediately to UserDefaults
+- All symbol labels update reactively when language changes
+- Symbol positions remain 100% identical across languages (LAMP requirement)
+- TTS plays in correct language immediately after toggle
+- Symbol images remain unchanged (only labels switch)
+
+LanguageTests: 10/10 passing (100%)
+- ✓ languageHasDisplayName: PASSING
+- ✓ languageHasRawValue: PASSING
+- ✓ languageHasVoiceIdentifier: PASSING
+- ✓ symbolLabelsChangeWithLanguage: PASSING
+- ✓ symbolImageDoesNotChangeWithLanguage: PASSING
+- ✓ symbolPositionDoesNotChangeWithLanguage: PASSING
+- ✓ gridLayoutIdenticalAcrossLanguages: PASSING
+- ✓ ttsPlaysInSelectedLanguage: PASSING
+- ✓ languageSettingPersistsAcrossRestart: PASSING (now working with UserDefaults!)
+- ✓ languageToggleUpdatesImmediately: PASSING
+
+Implementation Details:
+- AppSettings.save() encodes and stores settings in UserDefaults
+- AppSettings.loadFromPersistence() decodes from UserDefaults
+- AppSettings.loadOrDefault() provides fallback to default settings
+- AACViewModel.toggleLanguage() persists immediately after state change
+- SwiftUI @Published property ensures UI updates automatically
+- SymbolCell.label(for:) provides language-specific text
+- Symbol.position is immutable and language-independent (LAMP compliance)
+
+Build: SUCCESS
+Tests: 89 tests, 23 issues remaining (down from 24)
+Linear: FLY-8 marked as Done

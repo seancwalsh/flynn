@@ -36,4 +36,29 @@ struct AppSettings: Codable {
     var minimumTouchTarget: CGFloat {
         60.0
     }
+
+    // MARK: - Persistence
+
+    private static let userDefaults = UserDefaults.standard
+    private static let settingsKey = "FlynnAAC.AppSettings"
+
+    /// Load settings from UserDefaults
+    static func loadFromPersistence() -> AppSettings? {
+        guard let data = userDefaults.data(forKey: settingsKey),
+              let settings = try? JSONDecoder().decode(AppSettings.self, from: data) else {
+            return nil
+        }
+        return settings
+    }
+
+    /// Save settings to UserDefaults
+    func save() {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        Self.userDefaults.set(data, forKey: Self.settingsKey)
+    }
+
+    /// Load persisted settings or return default
+    static func loadOrDefault() -> AppSettings {
+        loadFromPersistence() ?? .default
+    }
 }

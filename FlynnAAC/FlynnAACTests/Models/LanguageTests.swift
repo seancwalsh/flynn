@@ -110,6 +110,7 @@ struct LanguageTests {
         // Language preference must survive app restart
         var settings = AppSettings.default
         settings.language = .bulgarian
+        settings.save()
 
         // Simulate save and reload
         let persisted = AppSettings.loadFromPersistence()
@@ -131,14 +132,5 @@ struct LanguageTests {
 
         #expect(elapsed < 0.01,
                "Language toggle must be instantaneous (no network)")
-    }
-}
-
-// MARK: - AppSettings Extensions for Testing
-
-extension AppSettings {
-    /// Load settings from persistence
-    static func loadFromPersistence() -> AppSettings? {
-        nil // Not implemented yet - needs UserDefaults or Core Data
     }
 }

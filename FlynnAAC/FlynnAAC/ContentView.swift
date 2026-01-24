@@ -68,12 +68,13 @@ struct HeaderView: View {
 /// Coordinates audio playback, phrase building, and state management
 @MainActor
 class AACViewModel: ObservableObject {
-    @Published var currentLanguage: Language = .english
+    @Published var currentLanguage: Language
     @Published var phraseSymbols: [Symbol] = []
     @Published var currentCategory: Category?
 
     private let audioService: AudioService
     private let phraseEngine: PhraseEngine
+    private var settings: AppSettings
 
     init(
         audioService: AudioService = AudioService(),
@@ -81,6 +82,10 @@ class AACViewModel: ObservableObject {
     ) {
         self.audioService = audioService
         self.phraseEngine = phraseEngine
+
+        // Load persisted settings or use defaults
+        self.settings = AppSettings.loadOrDefault()
+        self.currentLanguage = settings.language
     }
 
     // MARK: - Symbol Interaction
@@ -106,6 +111,10 @@ class AACViewModel: ObservableObject {
 
     func toggleLanguage() {
         currentLanguage = currentLanguage == .english ? .bulgarian : .english
+
+        // Persist language setting immediately
+        settings.language = currentLanguage
+        settings.save()
     }
 
     // MARK: - Phrase Management

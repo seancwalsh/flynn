@@ -88,7 +88,7 @@
         "Verify symbol grid positions are 100% identical",
         "Restart app - verify language setting persists"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-9",
