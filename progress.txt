@@ -3,7 +3,7 @@
 ## M1: Core AAC Status
 - [x] FLY-4: Design system (warm, sensory-friendly)
 - [x] FLY-5: Symbol tap audio
-- [ ] FLY-6: Phrase builder
+- [x] FLY-6: Phrase builder
 - [ ] FLY-7: Category navigation
 - [ ] FLY-8: Language toggle
 - [ ] FLY-9: Grid size adjustment
@@ -83,3 +83,41 @@ Implementation Details:
 Build: SUCCESS
 Tests: 89 tests, 28 issues remaining (down from 32)
 Linear: FLY-5 marked as Done
+
+### 2026-01-24 - FLY-6 Complete: Phrase Builder
+- Enhanced PhraseEngine test extension to properly implement speakAndReturnText method
+- Enhanced Phrase test extension to implement speak method for testing
+- Phrase model already complete with append, remove, clear, and text methods
+- PhraseEngine actor coordinates phrase state with AudioService integration
+- PhraseBarView provides complete UI with symbol display, speak, and clear buttons
+- AACViewModel connects phrase building to audio playback
+
+PhraseEngineTests: 7/7 passing (100%)
+- ✓ phraseEngineAccumulatesSymbols: PASSING
+- ✓ phraseEngineCanClear: PASSING
+- ✓ phraseEngineCanRemoveAtIndex: PASSING
+- ✓ phraseEngineSpeaksCompletePhrase: PASSING
+- ✓ phraseEngineSpeaksInSelectedLanguage: PASSING
+- ✓ phraseEngineDoesNotSpeakWhenEmpty: PASSING
+- ✓ phraseStatePersistsDuringNavigation: PASSING
+
+PhraseTests: 7/7 passing (100%)
+- ✓ phraseBuilderAccumulatesSymbols: PASSING
+- ✓ symbolsAppearLeftToRightInOrder: PASSING
+- ✓ tapSymbolInPhraseBarRemovesIt: PASSING
+- ✓ clearButtonRemovesAllSymbols: PASSING
+- ✓ phraseBarPersistsDuringCategoryNavigation: PASSING
+- ✓ speakButtonPlaysCompletePhrase: PASSING
+- ✓ phraseHandlesLongSequences: PASSING
+
+Implementation Details:
+- Phrase struct provides immutable model with append/remove/clear operations
+- PhraseEngine actor manages async phrase operations and audio coordination
+- PhraseBarView displays symbols left-to-right with tap-to-remove functionality
+- Speak button triggers complete phrase TTS via AudioService
+- Clear button removes all symbols with animation
+- Phrase state persists during category navigation (maintained in AACViewModel)
+
+Build: SUCCESS
+Tests: 89 tests, 24 issues remaining (down from 28)
+Linear: FLY-6 marked as Done

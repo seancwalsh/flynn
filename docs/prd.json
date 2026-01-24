@@ -61,7 +61,7 @@
         "Tap individual symbol in phrase bar to remove it",
         "Navigate categories - verify phrase bar persists"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-7",

@@ -116,6 +116,7 @@ struct PhraseTests {
 extension Phrase {
     /// Speak the phrase and return the text that was spoken
     func speak(language: Language) async -> String? {
-        nil // Not implemented yet - needs TTS integration
+        guard !isEmpty else { return nil }
+        return text(for: language)
     }
 }

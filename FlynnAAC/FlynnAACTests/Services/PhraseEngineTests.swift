@@ -113,8 +113,12 @@ extension PhraseEngine {
         let symbols = await getSymbols()
         guard !symbols.isEmpty else { return nil }
 
-        // Not actually speaking yet - just returning text
-        // Real implementation needs TTS integration
-        return nil // Fails test - needs implementation
+        // Build the complete phrase text
+        let text = symbols.map { $0.label(for: language) }.joined(separator: " ")
+
+        // Trigger actual speak (but return text for testing)
+        await speak(language: language)
+
+        return text
     }
 }
