@@ -1,29 +1,39 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var currentLanguage: Language = .english
-    @State private var phraseSymbols: [Symbol] = []
-    @State private var currentCategory: Category?
+    @StateObject private var viewModel = AACViewModel()
 
     var body: some View {
         VStack(spacing: 0) {
             HeaderView(
-                currentLanguage: $currentLanguage
+                currentLanguage: viewModel.currentLanguage,
+                onLanguageToggle: {
+                    viewModel.toggleLanguage()
+                }
             )
 
             PhraseBarView(
-                symbols: $phraseSymbols,
-                language: currentLanguage
+                symbols: viewModel.phraseSymbols,
+                language: viewModel.currentLanguage,
+                onSpeak: {
+                    viewModel.speakPhrase()
+                },
+                onClear: {
+                    viewModel.clearPhrase()
+                },
+                onRemoveSymbol: { index in
+                    viewModel.removeSymbol(at: index)
+                }
             )
 
             SymbolGridView(
-                category: currentCategory,
-                language: currentLanguage,
+                category: viewModel.currentCategory,
+                language: viewModel.currentLanguage,
                 onSymbolTapped: { symbol in
-                    phraseSymbols.append(symbol)
+                    viewModel.symbolTapped(symbol)
                 },
                 onCategoryTapped: { category in
-                    currentCategory = category
+                    viewModel.navigateToCategory(category)
                 }
             )
         }
@@ -31,14 +41,13 @@ struct ContentView: View {
 }
 
 struct HeaderView: View {
-    @Binding var currentLanguage: Language
+    let currentLanguage: Language
+    let onLanguageToggle: () -> Void
 
     var body: some View {
         HStack {
             Spacer()
-            Button(action: {
-                currentLanguage = currentLanguage == .english ? .bulgarian : .english
-            }) {
+            Button(action: onLanguageToggle) {
                 Text(currentLanguage == .english ? "EN" : "BG")
                     .font(.headline)
                     .padding(.horizontal, 12)
@@ -49,6 +58,90 @@ struct HeaderView: View {
             .padding()
         }
         .background(Color(.systemBackground))
+    }
+}
+
+/// Main view model for AAC functionality
+/// Coordinates audio playback, phrase building, and state management
+@MainActor
+class AACViewModel: ObservableObject {
+    @Published var currentLanguage: Language = .english
+    @Published var phraseSymbols: [Symbol] = []
+    @Published var currentCategory: Category?
+
+    private let audioService: AudioService
+    private let phraseEngine: PhraseEngine
+
+    init(
+        audioService: AudioService = AudioService(),
+        phraseEngine: PhraseEngine = PhraseEngine()
+    ) {
+        self.audioService = audioService
+        self.phraseEngine = phraseEngine
+    }
+
+    // MARK: - Symbol Interaction
+
+    func symbolTapped(_ symbol: Symbol) {
+        // Play audio immediately (target: <100ms)
+        Task {
+            do {
+                try await audioService.play(symbol: symbol, language: currentLanguage)
+            } catch {
+                print("Audio playback failed: \(error)")
+            }
+        }
+
+        // Add to phrase
+        phraseSymbols.append(symbol)
+        Task {
+            await phraseEngine.addSymbol(symbol)
+        }
+    }
+
+    // MARK: - Language Toggle
+
+    func toggleLanguage() {
+        currentLanguage = currentLanguage == .english ? .bulgarian : .english
+    }
+
+    // MARK: - Phrase Management
+
+    func speakPhrase() {
+        guard !phraseSymbols.isEmpty else { return }
+
+        Task {
+            let phrase = Phrase(symbols: phraseSymbols)
+            await audioService.speakPhrase(phrase, language: currentLanguage)
+        }
+    }
+
+    func clearPhrase() {
+        phraseSymbols.removeAll()
+        Task {
+            await phraseEngine.clear()
+        }
+    }
+
+    func removeSymbol(at index: Int) {
+        guard index < phraseSymbols.count else { return }
+        phraseSymbols.remove(at: index)
+
+        Task {
+            await phraseEngine.removeSymbol(at: index)
+        }
+    }
+
+    // MARK: - Category Navigation
+
+    func navigateToCategory(_ category: Category) {
+        currentCategory = category
+    }
+
+    func navigateBack() {
+        // Navigate back to root (nil) for now
+        // TODO: Implement proper category hierarchy tracking for FLY-7
+        currentCategory = nil
     }
 }
 

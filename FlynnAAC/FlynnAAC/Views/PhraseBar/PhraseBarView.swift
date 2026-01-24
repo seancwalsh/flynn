@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct PhraseBarView: View {
-    @Binding var symbols: [Symbol]
+    let symbols: [Symbol]
     let language: Language
+    let onSpeak: () -> Void
+    let onClear: () -> Void
+    let onRemoveSymbol: (Int) -> Void
 
     @State private var isPulsing = false
 
@@ -17,7 +20,7 @@ struct PhraseBarView: View {
                             language: language,
                             onTap: {
                                 withAnimation(FlynnTheme.Animation.standardEasing) {
-                                    _ = symbols.remove(at: index)
+                                    onRemoveSymbol(index)
                                 }
                             }
                         )
@@ -34,7 +37,7 @@ struct PhraseBarView: View {
             // Clear button
             Button(action: {
                 withAnimation(FlynnTheme.Animation.standardEasing) {
-                    symbols.removeAll()
+                    onClear()
                 }
             }) {
                 Image(systemName: "xmark.circle.fill")
@@ -72,8 +75,8 @@ struct PhraseBarView: View {
             isPulsing = false
         }
 
-        // Audio playback handled by PhraseEngine
-        // TODO: Connect to PhraseEngine
+        // Trigger audio playback
+        onSpeak()
     }
 
     // MARK: - Theme Compliance Properties

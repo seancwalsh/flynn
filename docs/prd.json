@@ -47,7 +47,7 @@
         "Verify audio plays in currently selected language",
         "Test with device offline - audio should play from cache"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-6",

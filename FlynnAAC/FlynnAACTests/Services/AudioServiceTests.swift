@@ -104,31 +104,4 @@ struct AudioServiceTests {
 }
 
 // MARK: - AudioService Extensions for Testing
-// These need to be implemented in the actual AudioService
-
-extension AudioService {
-    /// The language of the last played audio
-    var lastPlayedLanguage: Language? {
-        get async { nil } // Not implemented yet
-    }
-
-    /// Enable/disable offline mode for testing
-    func setOfflineMode(_ offline: Bool) async {
-        // Not implemented yet
-    }
-
-    /// Check if audio is cached for offline use
-    func isAudioCached(for symbolId: String, language: Language) async -> Bool {
-        false // Not implemented yet
-    }
-
-    /// Callback when playback starts (for visual feedback sync)
-    func setOnPlaybackStart(_ callback: @escaping () -> Void) async {
-        // Not implemented yet
-    }
-
-    /// Whether audio plays in silent mode
-    var playsInSilentMode: Bool {
-        get async { false } // Not implemented yet - needs AVAudioSession config
-    }
-}
+// All test support methods are now implemented in AudioService.swift
