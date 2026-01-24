@@ -8,6 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		FE4125D9D5E247FB8F43EC27 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA0390B09D0A451B94EF8D0F /* Assets.xcassets */; };
+		A1B2C3D4E5F60001 /* Audio in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002 /* Audio */; };
+		A1B2C3D4E5F60003 /* symbol_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60004 /* symbol_manifest.json */; };
+		E11AB5001 /* ElevenLabsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5002 /* ElevenLabsService.swift */; };
+		E11AB5003 /* PhraseCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5004 /* PhraseCacheService.swift */; };
+		E11AB5005 /* APIKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5006 /* APIKeys.swift */; };
+		E11AB5008 /* ARASAACService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5009 /* ARASAACService.swift */; };
+		E11AB500A /* ARASAACImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB500B /* ARASAACImageView.swift */; };
 		0308A8E24478DABBAAF515D5 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE0D9DF26F9F19AFDEE8309 /* Language.swift */; };
 		0384B581E5E5006BF56EB912 /* SymbolStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0912E15AA83142AE3F4ADC /* SymbolStore.swift */; };
 		047E088E97798017E17CD2CD /* GridPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7044ECE1E93FB8DE84B570DD /* GridPosition.swift */; };
@@ -48,6 +55,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		E11AB5002 /* ElevenLabsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsService.swift; sourceTree = "<group>"; };
+		E11AB5004 /* PhraseCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseCacheService.swift; sourceTree = "<group>"; };
+		E11AB5006 /* APIKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeys.swift; sourceTree = "<group>"; };
+		E11AB5009 /* ARASAACService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARASAACService.swift; sourceTree = "<group>"; };
+		E11AB500B /* ARASAACImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARASAACImageView.swift; sourceTree = "<group>"; };
 		07AF5255B54A3D8F5B741F01 /* PhraseEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseEngineTests.swift; sourceTree = "<group>"; };
 		2F8965C71721182FC5530405 /* SymbolGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolGridView.swift; sourceTree = "<group>"; };
 		34534A7AFC170508E31BF607 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
@@ -77,6 +89,8 @@
 		D7153EFE8495A89332DDC456 /* Symbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbol.swift; sourceTree = "<group>"; };
 		E0BBB2340B4B5152BAA04BD8 /* Phrase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phrase.swift; sourceTree = "<group>"; };
 		EA0390B09D0A451B94EF8D0F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002 /* Audio */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Audio; sourceTree = "<group>"; };
+		A1B2C3D4E5F60004 /* symbol_manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = symbol_manifest.json; sourceTree = "<group>"; };
 		F4CFEEC4A342D7E1CD7CC877 /* FlynnAAC.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FlynnAAC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7869E916F54BC26FA7B3D68 /* FlynnAACTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FlynnAACTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -96,6 +110,7 @@
 		131B5D3BA48E3EF9DC0412E9 /* FlynnAAC */ = {
 			isa = PBXGroup;
 			children = (
+				E11AB5007 /* Config */,
 				3CA1DBEEB7ADECF142859943 /* ContentView.swift */,
 				805533C3EF123619C5A82059 /* FlynnAACApp.swift */,
 				5A4ADA8D7F8B40E3E3AF58D5 /* Info.plist */,
@@ -121,6 +136,8 @@
 			isa = PBXGroup;
 			children = (
 				EA0390B09D0A451B94EF8D0F /* Assets.xcassets */,
+				A1B2C3D4E5F60002 /* Audio */,
+				A1B2C3D4E5F60004 /* symbol_manifest.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -180,16 +197,28 @@
 		8BEDF5167F382D16F255509C /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				E11AB5009 /* ARASAACService.swift */,
 				CE5AB088E03556D1DADAF2A1 /* AudioService.swift */,
+				E11AB5002 /* ElevenLabsService.swift */,
+				E11AB5004 /* PhraseCacheService.swift */,
 				A7528BC2F72263B6A7703043 /* PhraseEngine.swift */,
 				AB0912E15AA83142AE3F4ADC /* SymbolStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
 		};
+		E11AB5007 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E11AB5006 /* APIKeys.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		8F629AC39ED23FC76F6586C7 /* SymbolGrid */ = {
 			isa = PBXGroup;
 			children = (
+				E11AB500B /* ARASAACImageView.swift */,
 				540B30A564B32C83D1DA214D /* CategoryCell.swift */,
 				A18CB5FF8560254D906EF23D /* SymbolCell.swift */,
 				2F8965C71721182FC5530405 /* SymbolGridView.swift */,
@@ -305,6 +334,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				FE4125D9D5E247FB8F43EC27 /* Assets.xcassets in Resources */,
+				A1B2C3D4E5F60001 /* Audio in Resources */,
+				A1B2C3D4E5F60003 /* symbol_manifest.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -332,9 +363,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E11AB5005 /* APIKeys.swift in Sources */,
+				E11AB500A /* ARASAACImageView.swift in Sources */,
+				E11AB5008 /* ARASAACService.swift in Sources */,
 				47FA15A734637C186FEACC84 /* AppSettings.swift in Sources */,
 				6B6781A4814229F866754D62 /* AudioService.swift in Sources */,
 				EC56E2EAF0574FCE00B82B0C /* Category.swift in Sources */,
+				E11AB5001 /* ElevenLabsService.swift in Sources */,
 				3DFAF51D90BDEEA042D2DA49 /* CategoryCell.swift in Sources */,
 				51ED98A14A60D0FC8E21FAA4 /* ContentView.swift in Sources */,
 				6EF8C8CC8B449D7128FD2D78 /* FlynnAACApp.swift in Sources */,
@@ -343,6 +378,7 @@
 				0308A8E24478DABBAAF515D5 /* Language.swift in Sources */,
 				4655DC5187B8D1F5E7BC95C6 /* Phrase.swift in Sources */,
 				CB70FB7B0B0661A14B563005 /* PhraseBarView.swift in Sources */,
+				E11AB5003 /* PhraseCacheService.swift in Sources */,
 				C9EAC644EE8A935435A930F8 /* PhraseEngine.swift in Sources */,
 				379C35C1B0071C6E0F4DB78B /* SettingsView.swift in Sources */,
 				C9DC1F6FFF657D67BEEEED24 /* Symbol.swift in Sources */,

@@ -24,8 +24,6 @@ struct SymbolCell: View {
         }) {
             VStack(spacing: FlynnTheme.Layout.spacing4) {
                 symbolImage
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 Text(symbol.label(for: language))
@@ -47,16 +45,15 @@ struct SymbolCell: View {
         .buttonStyle(PlainButtonStyle())
     }
 
-    /// Returns the appropriate image for the symbol
-    /// Tries asset catalog first, falls back to SF Symbol
-    private var symbolImage: Image {
-        // Map symbol IDs to SF Symbol names
-        let sfSymbolName = Self.sfSymbolMapping[symbol.id] ?? "questionmark.circle"
-        return Image(systemName: sfSymbolName)
+    /// Returns the appropriate image view for the symbol
+    /// Uses ARASAAC pictograms with SF Symbol fallback
+    @ViewBuilder
+    private var symbolImage: some View {
+        ARASAACImageView(symbolId: symbol.id)
     }
 
-    /// Mapping of symbol IDs to SF Symbol names
-    private static let sfSymbolMapping: [String: String] = [
+    /// Mapping of symbol IDs to SF Symbol names (fallback)
+    static let sfSymbolMapping: [String: String] = [
         // Core communication
         "want": "hand.point.right.fill",
         "more": "plus.circle.fill",

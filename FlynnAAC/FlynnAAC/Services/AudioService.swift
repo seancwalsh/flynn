@@ -1,6 +1,12 @@
 import AVFoundation
 import Foundation
 
+enum PhraseGenerationState {
+    case idle
+    case generating
+    case playing
+}
+
 actor AudioService {
     private var audioPlayer: AVAudioPlayer?
     private let synthesizer = AVSpeechSynthesizer()
@@ -14,12 +20,24 @@ actor AudioService {
     // Preloaded audio players for zero-latency playback
     private var cachedPlayers: [String: AVAudioPlayer] = [:]
 
-    init() {
-        configureAudioSession()
-        preloadCommonAudio()
+    // ElevenLabs phrase generation services
+    private let elevenLabsService: ElevenLabsService
+    private let phraseCacheService: PhraseCacheService
+
+    // Phrase generation state for UI feedback
+    private var _phraseGenerationState: PhraseGenerationState = .idle
+
+    init(
+        elevenLabsService: ElevenLabsService = ElevenLabsService(),
+        phraseCacheService: PhraseCacheService = PhraseCacheService()
+    ) {
+        self.elevenLabsService = elevenLabsService
+        self.phraseCacheService = phraseCacheService
+        Self.configureAudioSession()
+        Task { await self.preloadCommonAudio() }
     }
 
-    private func configureAudioSession() {
+    private static func configureAudioSession() {
         do {
             // Use playback category with mixWithOthers option to play in silent mode
             try AVAudioSession.sharedInstance().setCategory(
@@ -36,11 +54,11 @@ actor AudioService {
     private func preloadCommonAudio() {
         // Preload common symbols for instant playback
         // This ensures sub-100ms latency for cached audio
-        let commonSymbols = ["want", "go", "more", "help", "stop"]
+        // ElevenLabs audio files are bundled at Resources/Audio/{language}/{symbolId}.mp3
+        let commonSymbols = ["want", "go", "more", "help", "stop", "yes", "no"]
         for symbolId in commonSymbols {
             for language in Language.allCases {
-                let audioFile = "\(language.rawValue)/\(symbolId).mp3"
-                if let url = Bundle.main.url(forResource: audioFile, withExtension: nil) {
+                if let url = bundledAudioURL(for: symbolId, language: language) {
                     if let player = try? AVAudioPlayer(contentsOf: url) {
                         player.prepareToPlay()
                         cachedPlayers["\(symbolId)-\(language.rawValue)"] = player
@@ -48,6 +66,25 @@ actor AudioService {
                 }
             }
         }
+    }
+
+    // MARK: - Bundled Audio (ElevenLabs pre-generated)
+
+    /// Get URL for bundled audio file (ElevenLabs pre-generated MP3)
+    /// Audio files are stored at Resources/Audio/{language}/{symbolId}.mp3
+    private func bundledAudioURL(for symbolId: String, language: Language) -> URL? {
+        // Try the Audio subfolder path first (standard location)
+        if let url = Bundle.main.url(forResource: symbolId, withExtension: "mp3", subdirectory: "Audio/\(language.rawValue)") {
+            return url
+        }
+        // Fallback to flat path format
+        let audioFile = "\(language.rawValue)/\(symbolId)"
+        return Bundle.main.url(forResource: audioFile, withExtension: "mp3")
+    }
+
+    /// Check if bundled audio exists for a symbol in a given language
+    func hasBundledAudio(for symbolId: String, language: Language) -> Bool {
+        bundledAudioURL(for: symbolId, language: language) != nil
     }
 
     func play(symbol: Symbol, language: Language) async throws {
@@ -59,29 +96,61 @@ actor AudioService {
             callback()
         }
 
-        let audioFile = symbol.audioFile(for: language)
         let cacheKey = "\(symbol.id)-\(language.rawValue)"
 
-        // Try preloaded player first for instant playback
+        // Priority 1: Try preloaded player for instant playback (sub-100ms)
         if let cachedPlayer = cachedPlayers[cacheKey] {
             cachedPlayer.currentTime = 0 // Reset to beginning
             cachedPlayer.play()
             return
         }
 
-        // Try loading from bundle (still fast, but not preloaded)
-        if let url = Bundle.main.url(forResource: audioFile, withExtension: nil) {
+        // Priority 2: Try bundled ElevenLabs audio (pre-generated high-quality voice)
+        if let url = bundledAudioURL(for: symbol.id, language: language) {
             try await playAudioFile(at: url)
-        } else {
-            // Fallback to TTS
-            await speakText(symbol.label(for: language), language: language)
+            return
         }
+
+        // Priority 3: Fallback to Apple TTS (for symbols without pre-generated audio)
+        await speakText(symbol.label(for: language), language: language)
     }
 
     func speakPhrase(_ phrase: Phrase, language: Language) async {
         _lastPlayedLanguage = language
         let text = phrase.text(for: language)
+        let cacheKey = PhraseCacheService.generateCacheKey(text: text, language: language)
+
+        // 1. Check cache (instant playback)
+        if let cachedURL = await phraseCacheService.getCachedAudio(for: cacheKey) {
+            _phraseGenerationState = .playing
+            try? await playAudioFile(at: cachedURL)
+            _phraseGenerationState = .idle
+            return
+        }
+
+        // 2. Try ElevenLabs API (requires network)
+        _phraseGenerationState = .generating
+        do {
+            let audioData = try await elevenLabsService.generateAudio(text: text, language: language)
+            let url = try await phraseCacheService.cacheAudio(audioData, for: cacheKey)
+            _phraseGenerationState = .playing
+            try await playAudioFile(at: url)
+            _phraseGenerationState = .idle
+            return
+        } catch {
+            // Log error for debugging
+            print("ElevenLabs phrase generation failed: \(error)")
+            // Fall through to TTS on any error (network, API, etc.)
+        }
+
+        // 3. Fallback to Apple TTS (works offline)
+        _phraseGenerationState = .playing
         await speakText(text, language: language)
+        _phraseGenerationState = .idle
+    }
+
+    var phraseGenerationState: PhraseGenerationState {
+        get async { _phraseGenerationState }
     }
 
     private func playAudioFile(at url: URL) async throws {

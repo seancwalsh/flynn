@@ -3,6 +3,7 @@ import SwiftUI
 struct PhraseBarView: View {
     let symbols: [Symbol]
     let language: Language
+    let isGeneratingAudio: Bool
     let onSpeak: () -> Void
     let onClear: () -> Void
     let onRemoveSymbol: (Int) -> Void
@@ -51,12 +52,20 @@ struct PhraseBarView: View {
             Button(action: {
                 speakPhrase()
             }) {
-                Image(systemName: "speaker.wave.2.fill")
-                    .font(.title2)
-                    .foregroundStyle(FlynnTheme.Colors.accent)
-                    .scaleEffect(isPulsing ? 1.2 : 1.0)
+                ZStack {
+                    if isGeneratingAudio {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: FlynnTheme.Colors.accent))
+                    } else {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .font(.title2)
+                            .foregroundStyle(FlynnTheme.Colors.accent)
+                            .scaleEffect(isPulsing ? 1.2 : 1.0)
+                    }
+                }
+                .frame(width: 30, height: 30)
             }
-            .disabled(symbols.isEmpty)
+            .disabled(symbols.isEmpty || isGeneratingAudio)
             .opacity(symbols.isEmpty ? 0.3 : 1)
         }
         .padding(FlynnTheme.Layout.phraseBarPadding)
@@ -91,9 +100,7 @@ struct PhraseSymbolCell: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: FlynnTheme.Layout.spacing2) {
-                Image(symbol.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                ARASAACImageView(symbolId: symbol.id)
                     .frame(width: FlynnTheme.Layout.phraseBarSymbolSize, height: FlynnTheme.Layout.phraseBarSymbolSize * 0.75)
 
                 Text(symbol.label(for: language))

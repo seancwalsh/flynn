@@ -15,6 +15,7 @@ struct ContentView: View {
             PhraseBarView(
                 symbols: viewModel.phraseSymbols,
                 language: viewModel.currentLanguage,
+                isGeneratingAudio: viewModel.isGeneratingPhraseAudio,
                 onSpeak: {
                     viewModel.speakPhrase()
                 },
@@ -71,6 +72,7 @@ class AACViewModel: ObservableObject {
     @Published var currentLanguage: Language
     @Published var phraseSymbols: [Symbol] = []
     @Published var currentCategory: Category?
+    @Published var isGeneratingPhraseAudio: Bool = false
 
     private let audioService: AudioService
     private let phraseEngine: PhraseEngine
@@ -123,8 +125,10 @@ class AACViewModel: ObservableObject {
         guard !phraseSymbols.isEmpty else { return }
 
         Task {
+            isGeneratingPhraseAudio = true
             let phrase = Phrase(symbols: phraseSymbols)
             await audioService.speakPhrase(phrase, language: currentLanguage)
+            isGeneratingPhraseAudio = false
         }
     }
 
