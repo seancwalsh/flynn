@@ -9,6 +9,7 @@ actor AudioService {
     private var _lastPlayedLanguage: Language?
     private var _offlineMode: Bool = false
     private var _onPlaybackStart: (() -> Void)?
+    private var _speechRate: Float = 0.5 // Default from AppSettings
 
     // Preloaded audio players for zero-latency playback
     private var cachedPlayers: [String: AVAudioPlayer] = [:]
@@ -93,7 +94,8 @@ actor AudioService {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(identifier: language.voiceIdentifier)
             ?? AVSpeechSynthesisVoice(language: language.rawValue)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        // Use configured speech rate (0.0-1.0, where 0.5 is default)
+        utterance.rate = _speechRate
         synthesizer.speak(utterance)
     }
 
@@ -126,5 +128,15 @@ actor AudioService {
             // Verify playback category is configured correctly
             return AVAudioSession.sharedInstance().category == .playback
         }
+    }
+
+    // MARK: - FLY-11: Feedback Configuration
+
+    func configure(with settings: AppSettings) async {
+        _speechRate = settings.speechRate
+    }
+
+    var currentSpeechRate: Float {
+        get async { _speechRate }
     }
 }

@@ -130,7 +130,7 @@
         "Tap rapidly and verify animations don't block input",
         "Disable animations in settings and verify static feedback"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

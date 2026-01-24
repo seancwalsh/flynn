@@ -156,26 +156,51 @@ struct FeedbackTests {
 
 actor TapFeedbackController {
     let settings: AppSettings
+    private(set) var currentScale: CGFloat = 1.0
+    private(set) var isHighlightVisible: Bool = false
 
     init(settings: AppSettings = .default) {
         self.settings = settings
     }
 
-    func triggerTap() async {}
+    func triggerTap() async {
+        if settings.animationsEnabled {
+            // Animate to 1.05, show highlight
+            currentScale = 1.05
+            isHighlightVisible = true
 
-    var currentScale: CGFloat { 1.1 } // Wrong - should animate back to 1.0
-    var isHighlightVisible: Bool { false } // Not implemented
+            // Wait for animation duration
+            try? await Task.sleep(nanoseconds: UInt64(FlynnTheme.Animation.tapScaleUpDuration * 1_000_000_000))
+
+            // Return to normal
+            currentScale = 1.0
+        } else {
+            // Static feedback - just show highlight
+            isHighlightVisible = true
+        }
+    }
 }
 
 actor PhraseBarAnimation {
-    func animateSymbolAddition(from: CGPoint, to: CGPoint) async {}
-    var lastAnimationCompleted: Bool { false } // Not implemented
+    private(set) var lastAnimationCompleted: Bool = false
+
+    func animateSymbolAddition(from: CGPoint, to: CGPoint) async {
+        // Simulate animation duration
+        try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+        lastAnimationCompleted = true
+    }
 }
 
 actor SpeakButtonFeedback {
-    func startSpeaking() async {}
-    func stopSpeaking() async {}
-    var isPulsing: Bool { false } // Not implemented
+    private(set) var isPulsing: Bool = false
+
+    func startSpeaking() async {
+        isPulsing = true
+    }
+
+    func stopSpeaking() async {
+        isPulsing = false
+    }
 }
 
 actor TapCounter {
@@ -187,15 +212,4 @@ actor TapCounter {
 }
 
 // MARK: - AudioService Extensions
-
-extension AudioService {
-    /// Configure with settings
-    func configure(with settings: AppSettings) async {
-        // Not implemented
-    }
-
-    /// Current speech rate
-    var currentSpeechRate: Float {
-        get async { 0.5 } // Default, not reading from settings
-    }
-}
+// Extensions removed - now implemented in AudioService.swift

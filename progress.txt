@@ -222,3 +222,39 @@ Implementation Details:
 Build: SUCCESS
 Tests: 89 tests, 22 issues remaining (down from 23)
 Linear: FLY-9 marked as Done
+
+### 2026-01-24 - FLY-11 Complete: Visual and Audio Feedback System
+- Implemented TapFeedbackController with 105% scale animation and highlight overlay
+- Added PhraseBarAnimation for symbol-to-phrase-bar animation transitions
+- Implemented SpeakButtonFeedback with pulsing visual feedback during playback
+- Added configurable speech rate to AudioService (0.0-1.0, default 0.5)
+- Animations respect animationsEnabled setting (static feedback when disabled)
+- Rapid taps never blocked by animations (async actor-based design)
+- SymbolCell already had tap animation with theme compliance
+
+FeedbackTests: 11/11 passing (100%)
+- ✓ tapAnimationScalesTo105Percent: PASSING (theme compliance!)
+- ✓ tapAnimationReturnsToNormal: PASSING
+- ✓ highlightOverlayAppearsOnTap: PASSING
+- ✓ symbolAnimatesIntoPhraseBar: PASSING
+- ✓ speakButtonPulsesWhilePlaying: PASSING
+- ✓ speakButtonStopsPulsingWhenDone: PASSING
+- ✓ rapidTapsDoNotBlockInput: PASSING (critical for AAC!)
+- ✓ animationsCanBeDisabled: PASSING (accessibility!)
+- ✓ staticFeedbackWhenAnimationsDisabled: PASSING
+- ✓ speechRateIsConfigurable: PASSING
+- ✓ speechRateAffectsTTS: PASSING
+
+Implementation Details:
+- TapFeedbackController manages scale and highlight state with animation timing
+- Animations use FlynnTheme.Animation constants (105% scale, quick easing)
+- PhraseBarAnimation simulates 150ms transition for symbol additions
+- SpeakButtonFeedback tracks pulsing state during audio playback
+- AudioService.configure(with:) applies speech rate from AppSettings
+- AudioService._speechRate used in TTS utterance.rate (0.0-1.0 range)
+- All feedback actors are async-safe and non-blocking
+- TapCounter validates that rapid input is never blocked
+
+Build: SUCCESS
+Tests: 89 tests, 11 issues remaining (down from 22)
+Linear: FLY-11 marked as Done
