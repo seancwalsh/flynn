@@ -414,7 +414,7 @@ extension View {
 // MARK: - Symbol Category
 
 /// LAMP-style word categories for color coding
-enum SymbolCategory: String, CaseIterable {
+enum SymbolCategory: String, CaseIterable, Codable {
     case verb
     case noun
     case descriptor
@@ -426,14 +426,14 @@ enum SymbolCategory: String, CaseIterable {
 
     var color: Color {
         switch self {
-        case .verb: return FlynnTheme.Colors.Fallback.verb
-        case .noun: return FlynnTheme.Colors.Fallback.noun
-        case .descriptor: return FlynnTheme.Colors.Fallback.descriptor
-        case .social: return FlynnTheme.Colors.Fallback.social
-        case .question: return FlynnTheme.Colors.Fallback.question
-        case .pronoun: return FlynnTheme.Colors.Fallback.pronoun
-        case .preposition: return FlynnTheme.Colors.Fallback.preposition
-        case .misc: return FlynnTheme.Colors.Fallback.backgroundLight
+        case .verb: return FlynnTheme.Colors.categoryVerb
+        case .noun: return FlynnTheme.Colors.categoryNoun
+        case .descriptor: return FlynnTheme.Colors.categoryDescriptor
+        case .social: return FlynnTheme.Colors.categorySocial
+        case .question: return FlynnTheme.Colors.categoryQuestion
+        case .pronoun: return FlynnTheme.Colors.categoryPronoun
+        case .preposition: return FlynnTheme.Colors.categoryPreposition
+        case .misc: return FlynnTheme.Colors.categoryMisc
         }
     }
 

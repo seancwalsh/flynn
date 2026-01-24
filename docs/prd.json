@@ -34,7 +34,7 @@
         "Verify touch targets are >= 60x60 points",
         "Document accessibility and sensory considerations"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-5",

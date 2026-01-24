@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FE4125D9D5E247FB8F43EC27 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA0390B09D0A451B94EF8D0F /* Assets.xcassets */; };
 		0308A8E24478DABBAAF515D5 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE0D9DF26F9F19AFDEE8309 /* Language.swift */; };
 		0384B581E5E5006BF56EB912 /* SymbolStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0912E15AA83142AE3F4ADC /* SymbolStore.swift */; };
 		047E088E97798017E17CD2CD /* GridPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7044ECE1E93FB8DE84B570DD /* GridPosition.swift */; };
@@ -75,6 +76,7 @@
 		D429F90A5D7373D8AB21BE50 /* CategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryTests.swift; sourceTree = "<group>"; };
 		D7153EFE8495A89332DDC456 /* Symbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbol.swift; sourceTree = "<group>"; };
 		E0BBB2340B4B5152BAA04BD8 /* Phrase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phrase.swift; sourceTree = "<group>"; };
+		EA0390B09D0A451B94EF8D0F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F4CFEEC4A342D7E1CD7CC877 /* FlynnAAC.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FlynnAAC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7869E916F54BC26FA7B3D68 /* FlynnAACTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FlynnAACTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -118,6 +120,7 @@
 		34B318E9DE0F333039BD3872 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				EA0390B09D0A451B94EF8D0F /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -254,6 +257,7 @@
 			buildConfigurationList = F3FFA0E27D822D94CA1F29A1 /* Build configuration list for PBXNativeTarget "FlynnAAC" */;
 			buildPhases = (
 				E82AE7A2330E22563F7016F5 /* Sources */,
+				02408B76BD79413180C1D771 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -294,6 +298,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		02408B76BD79413180C1D771 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FE4125D9D5E247FB8F43EC27 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		0EF224C05A3CB517214C8666 /* Sources */ = {

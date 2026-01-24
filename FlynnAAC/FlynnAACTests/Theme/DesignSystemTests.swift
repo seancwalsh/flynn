@@ -137,71 +137,43 @@ struct DesignSystemTests {
 
 // MARK: - Helper Extensions for Testing
 
+#if canImport(UIKit)
+import UIKit
+
 extension Color {
     /// Extract RGB components for color testing
     var rgbComponents: (red: CGFloat, green: CGFloat, blue: CGFloat) {
-        // This is a simplified implementation - real implementation would use UIColor
-        // For now, return placeholder that will cause tests to fail
+        let uiColor = UIColor(self)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return (red: red, green: green, blue: blue)
+    }
+
+    var saturation: CGFloat {
+        let uiColor = UIColor(self)
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        return saturation
+    }
+}
+#else
+extension Color {
+    /// Extract RGB components for color testing
+    var rgbComponents: (red: CGFloat, green: CGFloat, blue: CGFloat) {
         return (red: 0, green: 0, blue: 0)
     }
 
     var saturation: CGFloat {
-        // Placeholder - real implementation needed
-        return 1.0 // Returns high saturation to fail the muted color test
+        return 1.0
     }
 }
+#endif
 
 // MARK: - Protocol Extensions for Theme Compliance
-// These properties need to be added to actual views for tests to pass
-
-extension SymbolCell {
-    /// Whether the cell uses theme colors (must be implemented)
-    static var usesThemeColors: Bool { false }
-
-    /// The tap scale value used (must match theme)
-    static var tapScaleValue: CGFloat { 1.1 } // Wrong value - should be 1.05
-
-    /// Whether dark mode is supported
-    static var supportsDarkMode: Bool { false }
-
-    /// The font used for labels
-    static var labelFont: Font { .caption } // Wrong - should use theme
-
-    /// Letter spacing for labels
-    static var labelTracking: CGFloat { 0 } // Wrong - should use theme
-
-    /// Cell padding
-    static var cellPadding: CGFloat { 8 } // May or may not match theme
-
-    /// Minimum touch target size
-    static var minimumSize: CGFloat { 44 } // Wrong - should be 60+
-
-    /// Tap animation duration
-    static var tapAnimationDuration: Double { 0.1 } // May not match theme
-
-    /// Animation scale based on settings
-    static func animationScale(for settings: AppSettings) -> CGFloat {
-        return settings.animationsEnabled ? 1.1 : 1.0 // Wrong scale value
-    }
-}
-
-extension PhraseBarView {
-    /// Height of the phrase bar
-    static var heightValue: CGFloat { 60 } // May not match theme
-}
-
-extension SymbolGridView {
-    /// Cell spacing in the grid
-    static var cellSpacing: CGFloat { 8 } // May not match theme
-
-    /// Grid line color
-    static var gridLineColor: Color { .gray } // Wrong - should use theme
-
-    /// Grid line width
-    static var gridLineWidth: CGFloat { 1 }
-}
-
-extension Symbol {
-    /// The LAMP category for this symbol (not yet implemented)
-    var category: SymbolCategory? { nil }
-}
+// The actual views now implement these properties - no test stubs needed

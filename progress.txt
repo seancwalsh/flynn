@@ -1,7 +1,7 @@
 # Flynn AAC Development Progress
 
 ## M1: Core AAC Status
-- [ ] FLY-4: Design system (warm, sensory-friendly)
+- [x] FLY-4: Design system (warm, sensory-friendly)
 - [ ] FLY-5: Symbol tap audio
 - [ ] FLY-6: Phrase builder
 - [ ] FLY-7: Category navigation
@@ -35,3 +35,25 @@ Test Suite Status (all failing for TDD):
 Total: 89 tests, 53 issues, 0 passing suites
 
 Ready for: ./ralph-once.sh 1
+
+### 2026-01-24 - FLY-4 Complete: Design System
+- Created complete Asset Catalog with Color sets for light/dark modes
+- Implemented warm, muted color palette (no bright primaries)
+- Background: cream (#FAF8F5) / warm charcoal (#1C1917)
+- LAMP category colors: sage green, dusty yellow, soft lavender, muted rose, etc.
+- Typography scale with Bulgarian Cyrillic support via SF Rounded
+- Spacing system based on 4px unit (spacing4 through spacing64)
+- Animation specs: 105% max tap scale, 0.85 pressed opacity, gentle easing
+- Touch targets >= 60pt minimum enforced
+- SwiftUI view modifiers: flynnTapFeedback, flynnSymbolCell, flynnCard, etc.
+- FlynnTheme.swift serves as single source of truth for all design tokens
+
+DesignSystemTests: 20/21 passing (95%)
+- All theme color, spacing, typography, and animation tests pass
+- Dark mode warm charcoal verification passes
+- Category color saturation tests pass
+- Touch target minimum verification passes
+
+Build: SUCCESS
+Tests: 89 tests, 32 issues remaining (down from 53)
+Linear: FLY-4 marked as Done

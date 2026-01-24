@@ -9,12 +9,12 @@ struct SymbolGridView: View {
     @State private var settings = AppSettings.default
 
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 8), count: settings.gridColumns)
+        Array(repeating: GridItem(.flexible(), spacing: Self.cellSpacing), count: settings.gridColumns)
     }
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 8) {
+            LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
                 if category != nil {
                     BackButton {
                         onCategoryTapped(Category(id: "", position: GridPosition(row: 0, col: 0)))
@@ -39,8 +39,9 @@ struct SymbolGridView: View {
                     )
                 }
             }
-            .padding()
+            .padding(FlynnTheme.Layout.screenMargin)
         }
+        .background(FlynnTheme.Colors.background)
     }
 
     private var symbols: [Symbol] {
@@ -52,6 +53,11 @@ struct SymbolGridView: View {
         // TODO: Get from SymbolStore based on category
         []
     }
+
+    // MARK: - Theme Compliance Properties
+    static var cellSpacing: CGFloat { FlynnTheme.Layout.gridCellSpacing }
+    static var gridLineColor: Color { FlynnTheme.Colors.border }
+    static var gridLineWidth: CGFloat { FlynnTheme.Layout.gridLineWidth }
 }
 
 struct BackButton: View {
