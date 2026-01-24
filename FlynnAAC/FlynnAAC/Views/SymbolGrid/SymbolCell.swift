@@ -23,7 +23,7 @@ struct SymbolCell: View {
             onTap()
         }) {
             VStack(spacing: FlynnTheme.Layout.spacing4) {
-                Image(symbol.imageName)
+                symbolImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -46,6 +46,57 @@ struct SymbolCell: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
+
+    /// Returns the appropriate image for the symbol
+    /// Tries asset catalog first, falls back to SF Symbol
+    private var symbolImage: Image {
+        // Map symbol IDs to SF Symbol names
+        let sfSymbolName = Self.sfSymbolMapping[symbol.id] ?? "questionmark.circle"
+        return Image(systemName: sfSymbolName)
+    }
+
+    /// Mapping of symbol IDs to SF Symbol names
+    private static let sfSymbolMapping: [String: String] = [
+        // Core communication
+        "want": "hand.point.right.fill",
+        "more": "plus.circle.fill",
+        "help": "questionmark.circle.fill",
+        "stop": "stop.circle.fill",
+        "yes": "checkmark.circle.fill",
+        "no": "xmark.circle.fill",
+
+        // Food category
+        "food": "fork.knife",
+        "apple": "apple.logo",
+        "water": "drop.fill",
+        "milk": "cup.and.saucer.fill",
+
+        // Common actions
+        "go": "arrow.right.circle.fill",
+        "eat": "mouth.fill",
+        "drink": "waterbottle.fill",
+        "play": "gamecontroller.fill",
+        "sleep": "moon.zzz.fill",
+        "bathroom": "toilet.fill",
+
+        // People
+        "mom": "figure.stand",
+        "dad": "figure.stand",
+        "me": "person.fill",
+        "you": "person.fill.questionmark",
+
+        // Feelings
+        "happy": "face.smiling.fill",
+        "sad": "cloud.rain.fill",
+        "angry": "flame.fill",
+        "tired": "zzz",
+        "hurt": "bandage.fill",
+
+        // Places
+        "home": "house.fill",
+        "school": "building.columns.fill",
+        "outside": "sun.max.fill"
+    ]
 
     // MARK: - Theme Compliance Properties
     // These static properties allow tests to verify theme usage
