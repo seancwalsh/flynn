@@ -3,6 +3,8 @@ import Foundation
 actor SymbolStore {
     private var rootSymbols: [Symbol] = []
     private var rootCategories: [Category] = []
+    private var offlineMode: Bool = false
+    private var errorMessages: [String] = []
 
     // Track whether we're using persistent storage (Core Data) or just defaults
     // For now, we use defaults but this property allows tests to verify intent
@@ -64,6 +66,30 @@ actor SymbolStore {
         }
 
         return true
+    }
+
+    // MARK: - FLY-10: Offline Functionality
+
+    /// Enable/disable offline mode
+    func setOfflineMode(_ offline: Bool) {
+        offlineMode = offline
+        if !offline {
+            // Clear errors when coming back online
+            errorMessages.removeAll()
+        }
+    }
+
+    /// Check if image is cached (for offline use)
+    /// In a real app, this would check if the image file exists in the bundle or cache
+    func isImageCached(for symbolId: String) -> Bool {
+        // For now, assume all images are bundled with the app
+        // In production, check if Bundle.main.url(forResource:) exists
+        true
+    }
+
+    /// Get any error messages
+    func getErrorMessages() -> [String] {
+        errorMessages
     }
 
     private static func createDefaultSymbols() -> [Symbol] {

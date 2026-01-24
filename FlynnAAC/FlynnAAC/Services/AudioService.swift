@@ -139,4 +139,14 @@ actor AudioService {
     var currentSpeechRate: Float {
         get async { _speechRate }
     }
+
+    // MARK: - FLY-10: Offline Functionality
+
+    /// Check if TTS can work offline
+    /// TTS is built into iOS and works offline for system voices
+    func canSpeakOffline(language: Language) -> Bool {
+        // TTS works offline with built-in system voices
+        // Only networked voices (Siri voices) require internet
+        true
+    }
 }

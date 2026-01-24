@@ -3,6 +3,7 @@ import Foundation
 actor PhraseEngine {
     private(set) var currentPhrase: Phrase = Phrase()
     private let audioService: AudioService
+    private var offlineMode: Bool = false
 
     init(audioService: AudioService = AudioService()) {
         self.audioService = audioService
@@ -31,5 +32,19 @@ actor PhraseEngine {
 
     var isEmpty: Bool {
         currentPhrase.isEmpty
+    }
+
+    // MARK: - FLY-10: Offline Functionality
+
+    /// Enable/disable offline mode
+    func setOfflineMode(_ offline: Bool) {
+        offlineMode = offline
+    }
+
+    /// Check if can speak offline
+    /// Phrase speaking works offline via TTS
+    func canSpeakOffline() -> Bool {
+        // TTS is always available offline
+        true
     }
 }

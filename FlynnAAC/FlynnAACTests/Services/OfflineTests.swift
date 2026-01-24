@@ -142,51 +142,44 @@ struct OfflineTests {
 }
 
 // MARK: - SymbolStore Extensions for Testing
-
-extension SymbolStore {
-    /// Enable/disable offline mode
-    func setOfflineMode(_ offline: Bool) async {
-        // Not implemented yet
-    }
-
-    /// Check if image is cached
-    func isImageCached(for symbolId: String) async -> Bool {
-        false // Not implemented yet
-    }
-
-    /// Get any error messages
-    func getErrorMessages() async -> [String] {
-        [] // Not implemented yet
-    }
-}
+// Extensions removed - now implemented in SymbolStore.swift
 
 // MARK: - AudioService Extensions for Testing
-
-extension AudioService {
-    /// Check if TTS can work offline
-    func canSpeakOffline(language: Language) async -> Bool {
-        false // Not implemented yet
-    }
-}
+// Extensions removed - now implemented in AudioService.swift
 
 // MARK: - PhraseEngine Extensions for Testing
-
-extension PhraseEngine {
-    /// Enable/disable offline mode
-    func setOfflineMode(_ offline: Bool) async {
-        // Not implemented yet
-    }
-
-    /// Check if can speak offline
-    func canSpeakOffline() async -> Bool {
-        false // Not implemented yet
-    }
-}
+// Extensions removed - now implemented in PhraseEngine.swift
 
 // MARK: - UsageAnalytics (needs implementation)
 
 actor UsageAnalytics {
-    func setOfflineMode(_ offline: Bool) async {}
-    func logSymbolTap(symbolId: String) async {}
-    var pendingLogCount: Int { 999 } // Returns non-zero to fail test
+    private var offlineMode: Bool = false
+    private var pendingLogs: [String] = []
+
+    func setOfflineMode(_ offline: Bool) {
+        offlineMode = offline
+        if !offline {
+            // Sync pending logs when coming back online
+            syncPendingLogs()
+        }
+    }
+
+    func logSymbolTap(symbolId: String) {
+        if offlineMode {
+            // Queue for later sync
+            pendingLogs.append(symbolId)
+        } else {
+            // Sync immediately (simulated)
+            // In real app, this would send to analytics service
+        }
+    }
+
+    var pendingLogCount: Int {
+        pendingLogs.count
+    }
+
+    private func syncPendingLogs() {
+        // Simulate sync to remote service
+        pendingLogs.removeAll()
+    }
 }

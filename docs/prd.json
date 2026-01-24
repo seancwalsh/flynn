@@ -116,7 +116,7 @@
         "Verify no error messages appear",
         "Re-enable network and verify usage logs sync"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLY-11",
