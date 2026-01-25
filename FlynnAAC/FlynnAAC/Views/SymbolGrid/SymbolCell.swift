@@ -15,19 +15,17 @@ struct SymbolCell: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Text(symbol.label(for: language))
-                .font(Self.labelFont)
-                .tracking(Self.labelTracking)
-                .foregroundStyle(FlynnTheme.Colors.textPrimary)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.primary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
         }
         .padding(Self.cellPadding)
         .frame(minWidth: Self.minimumSize, minHeight: Self.minimumSize)
-        .background(
-            (symbol.category?.color.opacity(0.15) ?? FlynnTheme.Colors.surface)
-                .opacity(isPressed ? FlynnTheme.Animation.pressedOpacity : 1.0)
+        .glassEffect(
+            .regular.tint((symbol.category?.color ?? .gray).opacity(0.3)).interactive(),
+            in: RoundedRectangle(cornerRadius: 14)
         )
-        .cornerRadius(FlynnTheme.Layout.cornerRadiusMedium)
         .scaleEffect(isPressed && settings.animationsEnabled ? Self.tapScaleValue : 1.0)
         .onTapGesture {
             triggerTapAnimation()
@@ -35,12 +33,12 @@ struct SymbolCell: View {
         }
         .onLongPressGesture(minimumDuration: 0.5, pressing: { pressing in
             if pressing {
-                withAnimation(FlynnTheme.Animation.quickEasing) {
+                withAnimation(.easeOut(duration: 0.1)) {
                     isPressed = true
                 }
             }
         }, perform: {
-            withAnimation(FlynnTheme.Animation.quickEasing) {
+            withAnimation(.easeOut(duration: 0.1)) {
                 isPressed = false
             }
             onLongPress?()
@@ -49,11 +47,11 @@ struct SymbolCell: View {
 
     private func triggerTapAnimation() {
         if settings.animationsEnabled {
-            withAnimation(FlynnTheme.Animation.quickEasing) {
+            withAnimation(.easeOut(duration: 0.08)) {
                 isPressed = true
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + FlynnTheme.Animation.tapScaleUpDuration) {
-                withAnimation(FlynnTheme.Animation.quickEasing) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                withAnimation(.easeOut(duration: 0.12)) {
                     isPressed = false
                 }
             }
@@ -125,4 +123,29 @@ struct SymbolCell: View {
     static func animationScale(for settings: AppSettings) -> CGFloat {
         return settings.animationsEnabled ? FlynnTheme.Animation.tapScale : 1.0
     }
+}
+
+#Preview {
+    LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 8) {
+        ForEach(["want", "go", "eat", "drink", "play"], id: \.self) { symbolId in
+            SymbolCell(
+                symbol: Symbol(
+                    id: symbolId,
+                    position: GridPosition(row: 0, col: 0),
+                    labels: ["en": symbolId],
+                    category: .verb
+                ),
+                language: .english,
+                onTap: {}
+            )
+        }
+    }
+    .padding()
+    .background(
+        LinearGradient(
+            colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }

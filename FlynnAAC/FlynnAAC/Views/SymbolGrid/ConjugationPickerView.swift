@@ -1,138 +1,161 @@
 import SwiftUI
 
 /// A picker view that displays all conjugation forms for a Bulgarian verb
-/// Shows pronoun + verb pictograms for visual clarity
+/// Uses iOS 26 Liquid Glass design for a modern, elegant appearance
 struct ConjugationPickerView: View {
     let symbol: Symbol
     let conjugation: BulgarianConjugation
     let onSelect: (String, GrammaticalPerson, GrammaticalNumber) -> Void
     let onCancel: () -> Void
 
-    /// Map grammatical person/number to pronoun symbol IDs
-    private static let pronounSymbolIds: [String: String] = [
-        "first_sg": "i",      // аз
-        "second_sg": "you",   // ти
-        "third_sg": "he",     // той/тя (using "he" as generic)
-        "first_pl": "we",     // ние
-        "second_pl": "you",   // вие (using "you" - same symbol)
-        "third_pl": "they"    // те
-    ]
+    @Namespace private var glassNamespace
 
     var body: some View {
-        VStack(spacing: FlynnTheme.Layout.spacing16) {
-            // Header with cancel button
-            HStack {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(FlynnTheme.Colors.textSecondary)
+        GlassEffectContainer {
+            VStack(spacing: FlynnTheme.Layout.spacing16) {
+                // Header with verb name
+                HStack {
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 32)
+                            .glassEffect(.regular.interactive())
+                    }
+
+                    Spacer()
+
+                    // Verb icon and name
+                    HStack(spacing: FlynnTheme.Layout.spacing8) {
+                        ARASAACImageView(symbolId: symbol.id)
+                            .frame(width: 32, height: 32)
+
+                        Text(conjugation.english)
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.horizontal, FlynnTheme.Layout.spacing12)
+                    .padding(.vertical, FlynnTheme.Layout.spacing8)
+                    .glassEffect(.regular, in: .capsule)
+
+                    Spacer()
+
+                    // Invisible balance element
+                    Color.clear
+                        .frame(width: 32, height: 32)
                 }
+                .padding(.horizontal, FlynnTheme.Layout.spacing8)
 
-                Spacer()
+                // Conjugation grid - 2x3 layout
+                VStack(spacing: FlynnTheme.Layout.spacing12) {
+                    // Singular forms row
+                    HStack(spacing: FlynnTheme.Layout.spacing8) {
+                        ConjugationButton(
+                            form: conjugation.first_sg,
+                            pronounSymbolId: "i",
+                            verbSymbolId: symbol.id,
+                            categoryColor: symbol.category?.color ?? .gray
+                        ) {
+                            onSelect(conjugation.first_sg, .first, .singular)
+                        }
+                        .glassEffectID("first_sg", in: glassNamespace)
 
-                Text(conjugation.english)
-                    .font(FlynnTheme.Typography.phraseBar)
-                    .foregroundStyle(FlynnTheme.Colors.textPrimary)
+                        ConjugationButton(
+                            form: conjugation.second_sg,
+                            pronounSymbolId: "you",
+                            verbSymbolId: symbol.id,
+                            categoryColor: symbol.category?.color ?? .gray
+                        ) {
+                            onSelect(conjugation.second_sg, .second, .singular)
+                        }
+                        .glassEffectID("second_sg", in: glassNamespace)
 
-                Spacer()
+                        ConjugationButton(
+                            form: conjugation.third_sg,
+                            pronounSymbolId: "he",
+                            verbSymbolId: symbol.id,
+                            categoryColor: symbol.category?.color ?? .gray
+                        ) {
+                            onSelect(conjugation.third_sg, .third, .singular)
+                        }
+                        .glassEffectID("third_sg", in: glassNamespace)
+                    }
 
-                // Balance the X button
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.clear)
+                    // Plural forms row
+                    HStack(spacing: FlynnTheme.Layout.spacing8) {
+                        ConjugationButton(
+                            form: conjugation.first_pl,
+                            pronounSymbolId: "we",
+                            verbSymbolId: symbol.id,
+                            categoryColor: symbol.category?.color ?? .gray
+                        ) {
+                            onSelect(conjugation.first_pl, .first, .plural)
+                        }
+                        .glassEffectID("first_pl", in: glassNamespace)
+
+                        ConjugationButton(
+                            form: conjugation.second_pl,
+                            pronounSymbolId: "you",
+                            verbSymbolId: symbol.id,
+                            categoryColor: symbol.category?.color ?? .gray
+                        ) {
+                            onSelect(conjugation.second_pl, .second, .plural)
+                        }
+                        .glassEffectID("second_pl", in: glassNamespace)
+
+                        ConjugationButton(
+                            form: conjugation.third_pl,
+                            pronounSymbolId: "they",
+                            verbSymbolId: symbol.id,
+                            categoryColor: symbol.category?.color ?? .gray
+                        ) {
+                            onSelect(conjugation.third_pl, .third, .plural)
+                        }
+                        .glassEffectID("third_pl", in: glassNamespace)
+                    }
+                }
+                .padding(.horizontal, FlynnTheme.Layout.spacing8)
             }
-            .padding(.horizontal)
-
-            // Conjugation grid - 2x3 layout
-            VStack(spacing: FlynnTheme.Layout.spacing12) {
-                // Singular forms
-                HStack(spacing: FlynnTheme.Layout.spacing8) {
-                    conjugationCard(
-                        form: conjugation.first_sg,
-                        pronounSymbolId: "i",
-                        person: .first,
-                        number: .singular
-                    )
-                    conjugationCard(
-                        form: conjugation.second_sg,
-                        pronounSymbolId: "you",
-                        person: .second,
-                        number: .singular
-                    )
-                    conjugationCard(
-                        form: conjugation.third_sg,
-                        pronounSymbolId: "he",
-                        person: .third,
-                        number: .singular
-                    )
-                }
-
-                // Plural forms
-                HStack(spacing: FlynnTheme.Layout.spacing8) {
-                    conjugationCard(
-                        form: conjugation.first_pl,
-                        pronounSymbolId: "we",
-                        person: .first,
-                        number: .plural
-                    )
-                    conjugationCard(
-                        form: conjugation.second_pl,
-                        pronounSymbolId: "you",
-                        person: .second,
-                        number: .plural
-                    )
-                    conjugationCard(
-                        form: conjugation.third_pl,
-                        pronounSymbolId: "they",
-                        person: .third,
-                        number: .plural
-                    )
-                }
-            }
-            .padding()
+            .padding(FlynnTheme.Layout.spacing16)
         }
-        .padding()
-        .background(FlynnTheme.Colors.surface)
-        .cornerRadius(FlynnTheme.Layout.cornerRadiusLarge)
-        .shadow(radius: 10)
     }
+}
 
-    /// A card showing pronoun pictogram + verb pictogram with text labels
-    @ViewBuilder
-    private func conjugationCard(
-        form: String,
-        pronounSymbolId: String,
-        person: GrammaticalPerson,
-        number: GrammaticalNumber
-    ) -> some View {
-        let iconSize: CGFloat = 40
+/// Individual conjugation button with glass effect
+private struct ConjugationButton: View {
+    let form: String
+    let pronounSymbolId: String
+    let verbSymbolId: String
+    let categoryColor: Color
+    let action: () -> Void
 
-        Button(action: {
-            onSelect(form, person, number)
-        }) {
-            VStack(spacing: FlynnTheme.Layout.spacing4) {
+    private let iconSize: CGFloat = 36
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: FlynnTheme.Layout.spacing6) {
                 // Pictograms row: pronoun + verb
-                HStack(spacing: FlynnTheme.Layout.spacing8) {
+                HStack(spacing: FlynnTheme.Layout.spacing4) {
                     ARASAACImageView(symbolId: pronounSymbolId)
                         .frame(width: iconSize, height: iconSize)
 
-                    ARASAACImageView(symbolId: symbol.id)
+                    ARASAACImageView(symbolId: verbSymbolId)
                         .frame(width: iconSize, height: iconSize)
                 }
 
-                // Text label showing the conjugated form
+                // Conjugated form text
                 Text(form)
-                    .font(FlynnTheme.Typography.symbolLabelMedium)
-                    .foregroundStyle(FlynnTheme.Colors.textPrimary)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
             }
-            .padding(FlynnTheme.Layout.spacing8)
+            .padding(.horizontal, FlynnTheme.Layout.spacing8)
+            .padding(.vertical, FlynnTheme.Layout.spacing8)
             .frame(maxWidth: .infinity)
-            .background(symbol.category?.color.opacity(0.15) ?? FlynnTheme.Colors.surfaceSecondary)
-            .cornerRadius(FlynnTheme.Layout.cornerRadiusMedium)
+            .glassEffect(.regular.tint(categoryColor.opacity(0.3)).interactive(), in: RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 
@@ -142,7 +165,38 @@ struct InlineConjugationPicker: View {
     let conjugation: BulgarianConjugation
     let onSelect: (String) -> Void
 
-    /// Map person/number key to pronoun symbol ID
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            GlassEffectContainer {
+                HStack(spacing: FlynnTheme.Layout.spacing8) {
+                    ForEach(conjugation.allForms, id: \.form) { form in
+                        Button(action: {
+                            onSelect(form.form)
+                        }) {
+                            VStack(spacing: FlynnTheme.Layout.spacing2) {
+                                HStack(spacing: FlynnTheme.Layout.spacing4) {
+                                    ARASAACImageView(symbolId: pronounSymbolId(for: form))
+                                        .frame(width: 24, height: 24)
+                                    ARASAACImageView(symbolId: verbSymbolId)
+                                        .frame(width: 24, height: 24)
+                                }
+                                Text(form.form)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.primary)
+                            }
+                            .padding(.horizontal, FlynnTheme.Layout.spacing8)
+                            .padding(.vertical, FlynnTheme.Layout.spacing4)
+                            .glassEffect(.regular.interactive())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, FlynnTheme.Layout.spacing8)
+            }
+        }
+    }
+
+    /// Map person/number to pronoun symbol ID
     private func pronounSymbolId(for form: ConjugatedForm) -> String {
         switch (form.person, form.number) {
         case (.first, .singular): return "i"
@@ -153,56 +207,35 @@ struct InlineConjugationPicker: View {
         case (.third, .plural): return "they"
         }
     }
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: FlynnTheme.Layout.spacing8) {
-                ForEach(conjugation.allForms, id: \.form) { form in
-                    Button(action: {
-                        onSelect(form.form)
-                    }) {
-                        VStack(spacing: FlynnTheme.Layout.spacing2) {
-                            HStack(spacing: FlynnTheme.Layout.spacing4) {
-                                ARASAACImageView(symbolId: pronounSymbolId(for: form))
-                                    .frame(width: 24, height: 24)
-                                ARASAACImageView(symbolId: verbSymbolId)
-                                    .frame(width: 24, height: 24)
-                            }
-                            Text(form.form)
-                                .font(FlynnTheme.Typography.caption)
-                                .foregroundStyle(FlynnTheme.Colors.textPrimary)
-                        }
-                        .padding(.horizontal, FlynnTheme.Layout.spacing8)
-                        .padding(.vertical, FlynnTheme.Layout.spacing4)
-                        .background(Color.green.opacity(0.15))
-                        .cornerRadius(FlynnTheme.Layout.cornerRadiusSmall)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
 }
 
 #Preview {
-    VStack {
-        ConjugationPickerView(
-            symbol: Symbol(
-                id: "want",
-                position: GridPosition(row: 0, col: 0),
-                labels: ["en": "want", "bg": "искам"],
-                category: .verb
-            ),
-            conjugation: VocabularyStructure.verbConjugations["want"]!,
-            onSelect: { form, person, number in
-                print("Selected: \(form)")
-            },
-            onCancel: {}
+    ZStack {
+        // Background content for glass effect to sample
+        LinearGradient(
+            colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
         )
-        .padding()
+        .ignoresSafeArea()
 
-        Spacer()
+        VStack {
+            ConjugationPickerView(
+                symbol: Symbol(
+                    id: "want",
+                    position: GridPosition(row: 0, col: 0),
+                    labels: ["en": "want", "bg": "искам"],
+                    category: .verb
+                ),
+                conjugation: VocabularyStructure.verbConjugations["want"]!,
+                onSelect: { form, person, number in
+                    print("Selected: \(form)")
+                },
+                onCancel: {}
+            )
+            .padding()
+
+            Spacer()
+        }
     }
-    .background(Color.gray.opacity(0.3))
 }

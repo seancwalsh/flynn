@@ -213,6 +213,7 @@ enum FlynnTheme {
         // MARK: Spacing Scale
         static let spacing2: CGFloat = unit * 0.5   // 2px - hairline
         static let spacing4: CGFloat = unit         // 4px - minimal
+        static let spacing6: CGFloat = unit * 1.5   // 6px - compact
         static let spacing8: CGFloat = unit * 2    // 8px - tight
         static let spacing12: CGFloat = unit * 3   // 12px - compact
         static let spacing16: CGFloat = unit * 4   // 16px - standard

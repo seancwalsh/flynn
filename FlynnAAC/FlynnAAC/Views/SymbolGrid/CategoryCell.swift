@@ -11,11 +11,11 @@ struct CategoryCell: View {
     var body: some View {
         Button(action: {
             if settings.animationsEnabled {
-                withAnimation(FlynnTheme.Animation.quickEasing) {
+                withAnimation(.easeOut(duration: 0.08)) {
                     isPressed = true
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + FlynnTheme.Animation.tapScaleUpDuration) {
-                    withAnimation(FlynnTheme.Animation.quickEasing) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    withAnimation(.easeOut(duration: 0.12)) {
                         isPressed = false
                     }
                 }
@@ -28,6 +28,7 @@ struct CategoryCell: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .foregroundStyle(.primary)
 
                     // Folder indicator
                     VStack {
@@ -35,29 +36,28 @@ struct CategoryCell: View {
                         HStack {
                             Spacer()
                             Image(systemName: "folder.fill")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.secondary)
                                 .padding(4)
                         }
                     }
                 }
 
                 Text(category.label(for: language))
-                    .font(FlynnTheme.Typography.symbolLabelMedium)
-                    .tracking(FlynnTheme.Typography.trackingStandard)
-                    .foregroundStyle(FlynnTheme.Colors.textPrimary)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
             }
             .padding(FlynnTheme.Layout.gridCellPadding)
             .frame(minWidth: FlynnTheme.Layout.minimumTouchTarget, minHeight: FlynnTheme.Layout.minimumTouchTarget)
-            .background(
-                FlynnTheme.Colors.categoryNoun.opacity(isPressed ? 0.3 : 0.15)
+            .glassEffect(
+                .regular.tint(FlynnTheme.Colors.categoryNoun.opacity(0.2)).interactive(),
+                in: RoundedRectangle(cornerRadius: 14)
             )
-            .cornerRadius(FlynnTheme.Layout.cornerRadiusMedium)
             .scaleEffect(isPressed && settings.animationsEnabled ? FlynnTheme.Animation.tapScale : 1.0)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 
     /// Returns the appropriate image for the category
@@ -87,4 +87,27 @@ struct CategoryCell: View {
         "outside": "tree.fill",
         "transport": "car.fill"
     ]
+}
+
+#Preview {
+    CategoryCell(
+        category: Category(
+            id: "food",
+            position: GridPosition(row: 0, col: 0),
+            labels: ["en": "Food", "bg": "Храна"],
+            symbols: [],
+            subcategories: []
+        ),
+        language: .english,
+        onTap: {}
+    )
+    .frame(width: 100, height: 100)
+    .padding()
+    .background(
+        LinearGradient(
+            colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    )
 }

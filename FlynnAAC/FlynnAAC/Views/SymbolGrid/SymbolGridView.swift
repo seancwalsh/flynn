@@ -37,6 +37,8 @@ struct SymbolGridView: View {
     @State private var selectedVerbSymbol: Symbol?
     @State private var selectedVerbConjugation: BulgarianConjugation?
 
+    @Namespace private var gridNamespace
+
     init(
         category: Category?,
         language: Language,
@@ -59,41 +61,57 @@ struct SymbolGridView: View {
 
     var body: some View {
         ZStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
-                    // Back button always at position [0,0] when in a category
-                    if category != nil {
-                        BackButton(action: onBackTapped)
-                    }
+            // Beautiful gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.95, green: 0.93, blue: 0.98),  // Soft lavender
+                    Color(red: 0.92, green: 0.96, blue: 0.98),  // Soft blue
+                    Color(red: 0.96, green: 0.94, blue: 0.92)   // Warm cream
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-                    // All items sorted by position
-                    ForEach(gridItems) { item in
-                        switch item {
-                        case .symbol(let symbol):
-                            SymbolCell(
-                                symbol: symbol,
-                                language: language,
-                                onTap: { handleSymbolTap(symbol) },
-                                onLongPress: { handleSymbolLongPress(symbol) }
-                            )
-                        case .category(let cat):
-                            CategoryCell(
-                                category: cat,
-                                language: language,
-                                onTap: { onCategoryTapped(cat) }
-                            )
+            ScrollView {
+                GlassEffectContainer(spacing: 12) {
+                    LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
+                        // Back button always at position [0,0] when in a category
+                        if category != nil {
+                            BackButton(action: onBackTapped)
+                                .glassEffectID("back", in: gridNamespace)
+                        }
+
+                        // All items sorted by position
+                        ForEach(gridItems) { item in
+                            switch item {
+                            case .symbol(let symbol):
+                                SymbolCell(
+                                    symbol: symbol,
+                                    language: language,
+                                    onTap: { handleSymbolTap(symbol) },
+                                    onLongPress: { handleSymbolLongPress(symbol) }
+                                )
+                                .glassEffectID(symbol.id, in: gridNamespace)
+                            case .category(let cat):
+                                CategoryCell(
+                                    category: cat,
+                                    language: language,
+                                    onTap: { onCategoryTapped(cat) }
+                                )
+                                .glassEffectID(cat.id, in: gridNamespace)
+                            }
                         }
                     }
                 }
                 .padding(FlynnTheme.Layout.screenMargin)
             }
-            .background(FlynnTheme.Colors.background)
 
             // Conjugation picker overlay
             if showingConjugationPicker,
                let symbol = selectedVerbSymbol,
                let conjugation = selectedVerbConjugation {
-                Color.black.opacity(0.3)
+                Color.black.opacity(0.25)
                     .ignoresSafeArea()
                     .onTapGesture {
                         showingConjugationPicker = false
@@ -109,11 +127,11 @@ struct SymbolGridView: View {
                         showingConjugationPicker = false
                     }
                 )
-                .padding()
-                .transition(.scale.combined(with: .opacity))
+                .padding(.horizontal, FlynnTheme.Layout.spacing24)
+                .transition(.scale(scale: 0.9).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: showingConjugationPicker)
+        .animation(.bouncy(duration: 0.3), value: showingConjugationPicker)
         .task {
             await loadContent()
         }
@@ -207,15 +225,17 @@ struct BackButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack {
-                Image(systemName: "arrow.left")
-                    .font(.system(size: 32))
+            VStack(spacing: FlynnTheme.Layout.spacing4) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.primary)
                 Text("Back")
-                    .font(.caption)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
             }
             .frame(minWidth: 60, minHeight: 60)
-            .background(Color.gray.opacity(0.2))
-            .cornerRadius(8)
+            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14))
         }
+        .buttonStyle(.plain)
     }
 }

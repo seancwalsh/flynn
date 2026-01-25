@@ -22,45 +22,64 @@ struct ContentView: View {
     @StateObject private var viewModel = AACViewModel()
 
     var body: some View {
-        VStack(spacing: 0) {
-            HeaderView(
-                currentLanguage: viewModel.currentLanguage,
-                onLanguageToggle: {
-                    viewModel.toggleLanguage()
-                }
+        ZStack {
+            // Background gradient that shows through glass effects
+            LinearGradient(
+                colors: [
+                    Color(red: 0.95, green: 0.93, blue: 0.98),
+                    Color(red: 0.92, green: 0.96, blue: 0.98),
+                    Color(red: 0.96, green: 0.94, blue: 0.92)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
+            .ignoresSafeArea()
 
-            PhraseBarView(
-                phraseItems: viewModel.phraseItems,
-                language: viewModel.currentLanguage,
-                isGeneratingAudio: viewModel.isGeneratingPhraseAudio,
-                onSpeak: {
-                    viewModel.speakPhrase()
-                },
-                onClear: {
-                    viewModel.clearPhrase()
-                },
-                onRemoveSymbol: { index in
-                    viewModel.removeSymbol(at: index)
-                }
-            )
+            VStack(spacing: 0) {
+                // Floating header with glass effect
+                HeaderView(
+                    currentLanguage: viewModel.currentLanguage,
+                    onLanguageToggle: {
+                        viewModel.toggleLanguage()
+                    }
+                )
 
-            SymbolGridView(
-                category: viewModel.currentCategory,
-                language: viewModel.currentLanguage,
-                onSymbolTapped: { symbol in
-                    viewModel.symbolTapped(symbol)
-                },
-                onSymbolWithLabelTapped: { symbol, label in
-                    viewModel.symbolTappedWithLabel(symbol, label: label)
-                },
-                onCategoryTapped: { category in
-                    viewModel.navigateToCategory(category)
-                },
-                onBackTapped: {
-                    viewModel.navigateBack()
-                }
-            )
+                // Phrase bar with glass effect
+                PhraseBarView(
+                    phraseItems: viewModel.phraseItems,
+                    language: viewModel.currentLanguage,
+                    isGeneratingAudio: viewModel.isGeneratingPhraseAudio,
+                    onSpeak: {
+                        viewModel.speakPhrase()
+                    },
+                    onClear: {
+                        viewModel.clearPhrase()
+                    },
+                    onRemoveSymbol: { index in
+                        viewModel.removeSymbol(at: index)
+                    }
+                )
+                .padding(.horizontal, FlynnTheme.Layout.spacing12)
+                .padding(.bottom, FlynnTheme.Layout.spacing8)
+
+                // Symbol grid
+                SymbolGridView(
+                    category: viewModel.currentCategory,
+                    language: viewModel.currentLanguage,
+                    onSymbolTapped: { symbol in
+                        viewModel.symbolTapped(symbol)
+                    },
+                    onSymbolWithLabelTapped: { symbol, label in
+                        viewModel.symbolTappedWithLabel(symbol, label: label)
+                    },
+                    onCategoryTapped: { category in
+                        viewModel.navigateToCategory(category)
+                    },
+                    onBackTapped: {
+                        viewModel.navigateBack()
+                    }
+                )
+            }
         }
     }
 }
@@ -72,17 +91,26 @@ struct HeaderView: View {
     var body: some View {
         HStack {
             Spacer()
-            Button(action: onLanguageToggle) {
-                Text(currentLanguage == .english ? "EN" : "BG")
-                    .font(.headline)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.2))
-                    .cornerRadius(8)
+
+            GlassEffectContainer {
+                Button(action: onLanguageToggle) {
+                    HStack(spacing: FlynnTheme.Layout.spacing8) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 16, weight: .medium))
+
+                        Text(currentLanguage == .english ? "EN" : "BG")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, FlynnTheme.Layout.spacing12)
+                    .padding(.vertical, FlynnTheme.Layout.spacing8)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .buttonStyle(.plain)
             }
-            .padding()
+            .padding(.trailing, FlynnTheme.Layout.spacing16)
+            .padding(.top, FlynnTheme.Layout.spacing8)
         }
-        .background(Color(.systemBackground))
     }
 }
 
@@ -181,7 +209,7 @@ class AACViewModel: ObservableObject {
             let phraseText = phraseItems.map { $0.label(for: currentLanguage) }.joined(separator: " ")
 
             // Create phrase with the symbols (for any other phrase functionality)
-            let phrase = Phrase(symbols: phraseSymbols)
+            _ = Phrase(symbols: phraseSymbols)
 
             // Speak the custom text (handles conjugated forms)
             await audioService.speakPhraseText(phraseText, language: currentLanguage)
