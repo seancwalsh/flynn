@@ -177,6 +177,9 @@ class AACViewModel: ObservableObject {
     private let phraseEngine: PhraseEngine
     @Published var settings: AppSettings
 
+    /// Detect rapid tapping ("playing with" the app) and suppress it
+    private let rapidTapDetector = RapidTapDetector()
+
     /// Convenience accessor for symbols (for backward compatibility)
     var phraseSymbols: [Symbol] {
         phraseItems.map { $0.symbol }
@@ -198,6 +201,8 @@ class AACViewModel: ObservableObject {
     // MARK: - Symbol Interaction
 
     func symbolTapped(_ symbol: Symbol) {
+        guard rapidTapDetector.shouldAllowTap() else { return }
+
         // Play audio immediately (target: <100ms)
         Task {
             do {
@@ -221,6 +226,8 @@ class AACViewModel: ObservableObject {
 
     /// Handle tapping a verb with a specific conjugated form
     func symbolTappedWithLabel(_ symbol: Symbol, label: String) {
+        guard rapidTapDetector.shouldAllowTap() else { return }
+
         // Play audio for the conjugated form
         Task {
             // For Bulgarian verbs, the bundled audio contains the first person singular form

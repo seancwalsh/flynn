@@ -29,11 +29,13 @@
 		51ED98A14A60D0FC8E21FAA4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA1DBEEB7ADECF142859943 /* ContentView.swift */; };
 		59B93F924344900CF06F13C9 /* CategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D429F90A5D7373D8AB21BE50 /* CategoryTests.swift */; };
 		6B6781A4814229F866754D62 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5AB088E03556D1DADAF2A1 /* AudioService.swift */; };
+		RAPIDTAP001 /* RapidTapDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = RAPIDTAP002 /* RapidTapDetector.swift */; };
 		6C97D1CC895A9B63048E2BB4 /* PhraseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39ADAFA68C6C3D5CA0932ABF /* PhraseTests.swift */; };
 		6EF8C8CC8B449D7128FD2D78 /* FlynnAACApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805533C3EF123619C5A82059 /* FlynnAACApp.swift */; };
 		76C003DD11B24671A6DE2A17 /* GridTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6074A470F76897176A3668B7 /* GridTests.swift */; };
 		90614F5F797B32E52CD875D3 /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34534A7AFC170508E31BF607 /* OfflineTests.swift */; };
 		AD69586887AE9E9E94B920CD /* AudioServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6670040C808EA345953802 /* AudioServiceTests.swift */; };
+		RAPIDTAP003 /* RapidTapDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RAPIDTAP004 /* RapidTapDetectorTests.swift */; };
 		C827E90B2FEE106267AE2E8A /* SymbolCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18CB5FF8560254D906EF23D /* SymbolCell.swift */; };
 		C9DC1F6FFF657D67BEEEED24 /* Symbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7153EFE8495A89332DDC456 /* Symbol.swift */; };
 		C9EAC644EE8A935435A930F8 /* PhraseEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7528BC2F72263B6A7703043 /* PhraseEngine.swift */; };
@@ -74,6 +76,7 @@
 		5A4ADA8D7F8B40E3E3AF58D5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6074A470F76897176A3668B7 /* GridTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridTests.swift; sourceTree = "<group>"; };
 		6A6670040C808EA345953802 /* AudioServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioServiceTests.swift; sourceTree = "<group>"; };
+		RAPIDTAP004 /* RapidTapDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RapidTapDetectorTests.swift; sourceTree = "<group>"; };
 		6EDC4265B432F99F979A3F2F /* SymbolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolTests.swift; sourceTree = "<group>"; };
 		CONJTEST001 /* ConjugationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConjugationTests.swift; sourceTree = "<group>"; };
 		7044ECE1E93FB8DE84B570DD /* GridPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridPosition.swift; sourceTree = "<group>"; };
@@ -90,6 +93,7 @@
 		B97F89A9FA1B72A76DF14A3D /* FeedbackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackTests.swift; sourceTree = "<group>"; };
 		C4365CF65048F7478E2911BB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		CE5AB088E03556D1DADAF2A1 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
+		RAPIDTAP002 /* RapidTapDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RapidTapDetector.swift; sourceTree = "<group>"; };
 		D429F90A5D7373D8AB21BE50 /* CategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryTests.swift; sourceTree = "<group>"; };
 		D7153EFE8495A89332DDC456 /* Symbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbol.swift; sourceTree = "<group>"; };
 		VOCAB0002 /* VocabularyStructure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyStructure.swift; sourceTree = "<group>"; };
@@ -109,6 +113,7 @@
 				B97F89A9FA1B72A76DF14A3D /* FeedbackTests.swift */,
 				34534A7AFC170508E31BF607 /* OfflineTests.swift */,
 				07AF5255B54A3D8F5B741F01 /* PhraseEngineTests.swift */,
+				RAPIDTAP004 /* RapidTapDetectorTests.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -210,6 +215,7 @@
 				E11AB5002 /* ElevenLabsService.swift */,
 				E11AB5004 /* PhraseCacheService.swift */,
 				A7528BC2F72263B6A7703043 /* PhraseEngine.swift */,
+				RAPIDTAP002 /* RapidTapDetector.swift */,
 				AB0912E15AA83142AE3F4ADC /* SymbolStore.swift */,
 			);
 			path = Services;
@@ -365,6 +371,7 @@
 				90614F5F797B32E52CD875D3 /* OfflineTests.swift in Sources */,
 				FD789C1C4924A727506F151E /* PhraseEngineTests.swift in Sources */,
 				6C97D1CC895A9B63048E2BB4 /* PhraseTests.swift in Sources */,
+				RAPIDTAP003 /* RapidTapDetectorTests.swift in Sources */,
 				D654A84B2A8E325DC0D50A60 /* SymbolTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -391,6 +398,7 @@
 				CB70FB7B0B0661A14B563005 /* PhraseBarView.swift in Sources */,
 				E11AB5003 /* PhraseCacheService.swift in Sources */,
 				C9EAC644EE8A935435A930F8 /* PhraseEngine.swift in Sources */,
+				RAPIDTAP001 /* RapidTapDetector.swift in Sources */,
 				379C35C1B0071C6E0F4DB78B /* SettingsView.swift in Sources */,
 				C9DC1F6FFF657D67BEEEED24 /* Symbol.swift in Sources */,
 				C827E90B2FEE106267AE2E8A /* SymbolCell.swift in Sources */,
