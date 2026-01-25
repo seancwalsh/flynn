@@ -193,14 +193,14 @@ struct VocabularyStructure {
     static let coreWords: [VocabularyWord] = [
         // Row 0
         VocabularyWord(id: "i", english: "I", bulgarian: "аз", category: .pronoun, arasaacId: 6632, row: 0, col: 1),
-        VocabularyWord(id: "is", english: "is", bulgarian: "е", category: .misc, arasaacId: 32308, row: 0, col: 2),
+        VocabularyWord(id: "is", english: "is", bulgarian: "е", category: .misc, arasaacId: nil, row: 0, col: 2),
         VocabularyWord(id: "want", english: "want", bulgarian: "искам", category: .verb, arasaacId: 5441, row: 0, col: 3),
 
         // Row 1
         VocabularyWord(id: "you", english: "you", bulgarian: "ти", category: .pronoun, arasaacId: 6625, row: 1, col: 1),
-        VocabularyWord(id: "can", english: "can", bulgarian: "мога", category: .verb, arasaacId: 6544, row: 1, col: 2),
+        VocabularyWord(id: "can", english: "can", bulgarian: "мога", category: .verb, arasaacId: 35949, row: 1, col: 2),
         VocabularyWord(id: "like", english: "like", bulgarian: "харесвам", category: .verb, arasaacId: 37826, row: 1, col: 3),
-        VocabularyWord(id: "not", english: "not", bulgarian: "не", category: .negation, arasaacId: 32308, row: 1, col: 4),
+        VocabularyWord(id: "not", english: "not", bulgarian: "не", category: .negation, arasaacId: 5526, row: 1, col: 4),
 
         // Row 2
         VocabularyWord(id: "it", english: "it", bulgarian: "то", category: .pronoun, arasaacId: 31670, row: 2, col: 1),
@@ -211,7 +211,7 @@ struct VocabularyStructure {
         // Row 3
         VocabularyWord(id: "have", english: "have", bulgarian: "имам", category: .verb, arasaacId: 32761, row: 3, col: 2),
         VocabularyWord(id: "stop", english: "stop", bulgarian: "спри", category: .negation, arasaacId: 7196, row: 3, col: 3),
-        VocabularyWord(id: "to", english: "to", bulgarian: "да", category: .misc, arasaacId: 32308, row: 3, col: 4),
+        VocabularyWord(id: "to", english: "to", bulgarian: "да", category: .misc, arasaacId: nil, row: 3, col: 4),
 
         // Row 4
         VocabularyWord(id: "help", english: "help", bulgarian: "помощ", category: .noun, arasaacId: 32648, row: 4, col: 2),
@@ -449,18 +449,18 @@ struct VocabularyStructure {
     // MARK: - Animals (Blue)
 
     static let animalsWords: [VocabularyWord] = [
-        VocabularyWord(id: "dog", english: "dog", bulgarian: "куче", category: .noun, arasaacId: 4594),
-        VocabularyWord(id: "cat", english: "cat", bulgarian: "котка", category: .noun, arasaacId: 2291),
-        VocabularyWord(id: "bird", english: "bird", bulgarian: "птица", category: .noun, arasaacId: 2225),
-        VocabularyWord(id: "fish", english: "fish", bulgarian: "риба", category: .noun, arasaacId: 2219),
-        VocabularyWord(id: "horse", english: "horse", bulgarian: "кон", category: .noun, arasaacId: 2264),
-        VocabularyWord(id: "cow", english: "cow", bulgarian: "крава", category: .noun, arasaacId: 2299),
-        VocabularyWord(id: "pig", english: "pig", bulgarian: "прасе", category: .noun, arasaacId: 2296),
-        VocabularyWord(id: "chicken_animal", english: "chicken", bulgarian: "кокошка", category: .noun, arasaacId: 2306),
-        VocabularyWord(id: "duck", english: "duck", bulgarian: "патица", category: .noun, arasaacId: 2258),
-        VocabularyWord(id: "rabbit", english: "rabbit", bulgarian: "заек", category: .noun, arasaacId: 2262),
-        VocabularyWord(id: "mouse", english: "mouse", bulgarian: "мишка", category: .noun, arasaacId: 2294),
-        VocabularyWord(id: "bear", english: "bear", bulgarian: "мечка", category: .noun, arasaacId: 2321),
+        VocabularyWord(id: "dog", english: "dog", bulgarian: "куче", category: .noun, arasaacId: 7202),
+        VocabularyWord(id: "cat", english: "cat", bulgarian: "котка", category: .noun, arasaacId: 7114),
+        VocabularyWord(id: "bird", english: "bird", bulgarian: "птица", category: .noun, arasaacId: 2490),
+        VocabularyWord(id: "fish", english: "fish", bulgarian: "риба", category: .noun, arasaacId: 2520),
+        VocabularyWord(id: "horse", english: "horse", bulgarian: "кон", category: .noun, arasaacId: 2294),
+        VocabularyWord(id: "cow", english: "cow", bulgarian: "крава", category: .noun, arasaacId: 2609),
+        VocabularyWord(id: "pig", english: "pig", bulgarian: "прасе", category: .noun, arasaacId: 24972),
+        VocabularyWord(id: "chicken_animal", english: "chicken", bulgarian: "кокошка", category: .noun, arasaacId: 4952),
+        VocabularyWord(id: "duck", english: "duck", bulgarian: "патица", category: .noun, arasaacId: 28479),
+        VocabularyWord(id: "rabbit", english: "rabbit", bulgarian: "заек", category: .noun, arasaacId: 2351),
+        VocabularyWord(id: "mouse", english: "mouse", bulgarian: "мишка", category: .noun, arasaacId: 2546),
+        VocabularyWord(id: "bear", english: "bear", bulgarian: "мечка", category: .noun, arasaacId: 2488),
     ]
 
     // MARK: - Fringe Vocabulary (Inside Folders)
