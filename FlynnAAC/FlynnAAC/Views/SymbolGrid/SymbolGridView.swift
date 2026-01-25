@@ -106,38 +106,27 @@ struct SymbolGridView: View {
                 }
                 .padding(FlynnTheme.Layout.screenMargin)
             }
-
-            // Conjugation picker overlay
-            if showingConjugationPicker,
-               let symbol = selectedVerbSymbol,
-               let conjugation = selectedVerbConjugation {
-                Color.black.opacity(0.1)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        showingConjugationPicker = false
-                    }
-
-                ConjugationPickerView(
-                    symbol: symbol,
-                    conjugation: conjugation,
-                    onSelect: { form, _, _ in
-                        handleConjugationSelected(symbol: symbol, form: form)
-                    },
-                    onCancel: {
-                        showingConjugationPicker = false
-                    }
-                )
-                .padding(.horizontal, FlynnTheme.Layout.spacing24)
-                .transition(.scale(scale: 0.9).combined(with: .opacity))
-            }
         }
-        .animation(.bouncy(duration: 0.3), value: showingConjugationPicker)
         .task {
             await loadContent()
         }
         .onChange(of: category) { _, _ in
             Task {
                 await loadContent()
+            }
+        }
+        .sheet(isPresented: $showingConjugationPicker) {
+            if let symbol = selectedVerbSymbol,
+               let conjugation = selectedVerbConjugation {
+                ConjugationPickerView(
+                    symbol: symbol,
+                    conjugation: conjugation,
+                    onSelect: { form, _, _ in
+                        handleConjugationSelected(symbol: symbol, form: form)
+                    }
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
         }
     }
