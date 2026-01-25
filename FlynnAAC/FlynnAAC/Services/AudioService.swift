@@ -111,29 +111,8 @@ actor AudioService {
             return
         }
 
-        // Priority 3: Try ElevenLabs API with caching (for symbols without bundled audio)
-        let label = symbol.label(for: language)
-        let phraseCacheKey = PhraseCacheService.generateCacheKey(text: label, language: language)
-
-        // Check phrase cache first
-        if let cachedURL = await phraseCacheService.getCachedAudio(for: phraseCacheKey) {
-            try await playAudioFile(at: cachedURL)
-            return
-        }
-
-        // Try ElevenLabs API
-        do {
-            let audioData = try await elevenLabsService.generateAudio(text: label, language: language)
-            let url = try await phraseCacheService.cacheAudio(audioData, for: phraseCacheKey)
-            try await playAudioFile(at: url)
-            return
-        } catch {
-            // Log but don't fail - fall through to TTS
-            print("ElevenLabs audio generation failed for symbol '\(symbol.id)': \(error)")
-        }
-
-        // Priority 4: Fallback to Apple TTS (offline/error fallback)
-        await speakText(label, language: language)
+        // Priority 3: Fallback to Apple TTS (for symbols without pre-generated audio)
+        await speakText(symbol.label(for: language), language: language)
     }
 
     func speakPhrase(_ phrase: Phrase, language: Language) async {
