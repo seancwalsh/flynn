@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// A phrase item that wraps a symbol with an optional label override
+/// Used for conjugated verbs where the displayed form differs from the default
+struct PhraseItem: Identifiable {
+    let id = UUID()
+    let symbol: Symbol
+    let overrideLabel: String?
+
+    init(symbol: Symbol, overrideLabel: String? = nil) {
+        self.symbol = symbol
+        self.overrideLabel = overrideLabel
+    }
+
+    /// Get the label to display, using override if available
+    func label(for language: Language) -> String {
+        overrideLabel ?? symbol.label(for: language)
+    }
+}
+
 struct ContentView: View {
     @StateObject private var viewModel = AACViewModel()
 
@@ -13,7 +31,7 @@ struct ContentView: View {
             )
 
             PhraseBarView(
-                symbols: viewModel.phraseSymbols,
+                phraseItems: viewModel.phraseItems,
                 language: viewModel.currentLanguage,
                 isGeneratingAudio: viewModel.isGeneratingPhraseAudio,
                 onSpeak: {
@@ -32,6 +50,9 @@ struct ContentView: View {
                 language: viewModel.currentLanguage,
                 onSymbolTapped: { symbol in
                     viewModel.symbolTapped(symbol)
+                },
+                onSymbolWithLabelTapped: { symbol, label in
+                    viewModel.symbolTappedWithLabel(symbol, label: label)
                 },
                 onCategoryTapped: { category in
                     viewModel.navigateToCategory(category)
@@ -70,13 +91,18 @@ struct HeaderView: View {
 @MainActor
 class AACViewModel: ObservableObject {
     @Published var currentLanguage: Language
-    @Published var phraseSymbols: [Symbol] = []
+    @Published var phraseItems: [PhraseItem] = []
     @Published var currentCategory: Category?
     @Published var isGeneratingPhraseAudio: Bool = false
 
     private let audioService: AudioService
     private let phraseEngine: PhraseEngine
     private var settings: AppSettings
+
+    /// Convenience accessor for symbols (for backward compatibility)
+    var phraseSymbols: [Symbol] {
+        phraseItems.map { $0.symbol }
+    }
 
     init(
         audioService: AudioService = AudioService(),
@@ -103,7 +129,25 @@ class AACViewModel: ObservableObject {
         }
 
         // Add to phrase
-        phraseSymbols.append(symbol)
+        phraseItems.append(PhraseItem(symbol: symbol))
+        Task {
+            await phraseEngine.addSymbol(symbol)
+        }
+    }
+
+    /// Handle tapping a verb with a specific conjugated form
+    func symbolTappedWithLabel(_ symbol: Symbol, label: String) {
+        // Play the conjugated form audio
+        Task {
+            do {
+                try await audioService.speakText(label, language: currentLanguage)
+            } catch {
+                print("Audio playback failed: \(error)")
+            }
+        }
+
+        // Add to phrase with override label
+        phraseItems.append(PhraseItem(symbol: symbol, overrideLabel: label))
         Task {
             await phraseEngine.addSymbol(symbol)
         }
@@ -122,26 +166,34 @@ class AACViewModel: ObservableObject {
     // MARK: - Phrase Management
 
     func speakPhrase() {
-        guard !phraseSymbols.isEmpty else { return }
+        guard !phraseItems.isEmpty else { return }
 
         Task {
             isGeneratingPhraseAudio = true
+
+            // Build phrase text using override labels where available
+            let phraseText = phraseItems.map { $0.label(for: currentLanguage) }.joined(separator: " ")
+
+            // Create phrase with the symbols (for any other phrase functionality)
             let phrase = Phrase(symbols: phraseSymbols)
-            await audioService.speakPhrase(phrase, language: currentLanguage)
+
+            // Speak the custom text (handles conjugated forms)
+            await audioService.speakPhraseText(phraseText, language: currentLanguage)
+
             isGeneratingPhraseAudio = false
         }
     }
 
     func clearPhrase() {
-        phraseSymbols.removeAll()
+        phraseItems.removeAll()
         Task {
             await phraseEngine.clear()
         }
     }
 
     func removeSymbol(at index: Int) {
-        guard index < phraseSymbols.count else { return }
-        phraseSymbols.remove(at: index)
+        guard index < phraseItems.count else { return }
+        phraseItems.remove(at: index)
 
         Task {
             await phraseEngine.removeSymbol(at: index)

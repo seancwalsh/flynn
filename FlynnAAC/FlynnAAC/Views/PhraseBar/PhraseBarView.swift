@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PhraseBarView: View {
-    let symbols: [Symbol]
+    let phraseItems: [PhraseItem]
     let language: Language
     let isGeneratingAudio: Bool
     let onSpeak: () -> Void
@@ -15,9 +15,9 @@ struct PhraseBarView: View {
             // Phrase symbols
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: FlynnTheme.Layout.spacing4) {
-                    ForEach(symbols.indices, id: \.self) { index in
+                    ForEach(phraseItems.indices, id: \.self) { index in
                         PhraseSymbolCell(
-                            symbol: symbols[index],
+                            phraseItem: phraseItems[index],
                             language: language,
                             onTap: {
                                 withAnimation(FlynnTheme.Animation.standardEasing) {
@@ -45,8 +45,8 @@ struct PhraseBarView: View {
                     .font(.title2)
                     .foregroundStyle(FlynnTheme.Colors.error)
             }
-            .disabled(symbols.isEmpty)
-            .opacity(symbols.isEmpty ? 0.3 : 1)
+            .disabled(phraseItems.isEmpty)
+            .opacity(phraseItems.isEmpty ? 0.3 : 1)
 
             // Speak button
             Button(action: {
@@ -65,15 +65,15 @@ struct PhraseBarView: View {
                 }
                 .frame(width: 30, height: 30)
             }
-            .disabled(symbols.isEmpty || isGeneratingAudio)
-            .opacity(symbols.isEmpty ? 0.3 : 1)
+            .disabled(phraseItems.isEmpty || isGeneratingAudio)
+            .opacity(phraseItems.isEmpty ? 0.3 : 1)
         }
         .padding(FlynnTheme.Layout.phraseBarPadding)
         .background(FlynnTheme.Colors.background)
     }
 
     private func speakPhrase() {
-        guard !symbols.isEmpty else { return }
+        guard !phraseItems.isEmpty else { return }
 
         // Visual feedback
         withAnimation(.easeInOut(duration: 0.3).repeatCount(3)) {
@@ -93,24 +93,24 @@ struct PhraseBarView: View {
 }
 
 struct PhraseSymbolCell: View {
-    let symbol: Symbol
+    let phraseItem: PhraseItem
     let language: Language
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: FlynnTheme.Layout.spacing2) {
-                ARASAACImageView(symbolId: symbol.id)
+                ARASAACImageView(symbolId: phraseItem.symbol.id)
                     .frame(width: FlynnTheme.Layout.phraseBarSymbolSize, height: FlynnTheme.Layout.phraseBarSymbolSize * 0.75)
 
-                Text(symbol.label(for: language))
+                Text(phraseItem.label(for: language))
                     .font(FlynnTheme.Typography.caption)
                     .tracking(FlynnTheme.Typography.trackingWide)
                     .foregroundStyle(FlynnTheme.Colors.textPrimary)
                     .lineLimit(1)
             }
             .padding(FlynnTheme.Layout.spacing4)
-            .background(symbol.category?.color.opacity(0.12) ?? FlynnTheme.Colors.surfaceSecondary)
+            .background(phraseItem.symbol.category?.color.opacity(0.12) ?? FlynnTheme.Colors.surfaceSecondary)
             .cornerRadius(FlynnTheme.Layout.cornerRadiusSmall)
         }
         .buttonStyle(PlainButtonStyle())

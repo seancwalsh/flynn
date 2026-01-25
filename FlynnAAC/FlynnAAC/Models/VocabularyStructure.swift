@@ -1,5 +1,78 @@
 import SwiftUI
 
+// MARK: - Bulgarian Verb Conjugation
+
+/// Grammatical person for verb conjugation
+enum GrammaticalPerson: String, Codable, CaseIterable {
+    case first = "1"
+    case second = "2"
+    case third = "3"
+}
+
+/// Grammatical number for verb conjugation
+enum GrammaticalNumber: String, Codable, CaseIterable {
+    case singular = "sg"
+    case plural = "pl"
+}
+
+/// A single conjugated form with metadata
+struct ConjugatedForm: Codable, Equatable {
+    let form: String
+    let person: GrammaticalPerson
+    let number: GrammaticalNumber
+
+    /// Short description like "I want", "you want", etc.
+    var pronoun: String {
+        switch (person, number) {
+        case (.first, .singular): return "аз"
+        case (.second, .singular): return "ти"
+        case (.third, .singular): return "той/тя"
+        case (.first, .plural): return "ние"
+        case (.second, .plural): return "вие"
+        case (.third, .plural): return "те"
+        }
+    }
+}
+
+/// Complete conjugation table for a Bulgarian verb
+struct BulgarianConjugation: Codable, Equatable {
+    let verbId: String
+    let infinitive: String  // Citation form (1st person singular present)
+    let english: String
+
+    // Present tense conjugations
+    let first_sg: String   // аз искам
+    let second_sg: String  // ти искаш
+    let third_sg: String   // той/тя иска
+    let first_pl: String   // ние искаме
+    let second_pl: String  // вие искате
+    let third_pl: String   // те искат
+
+    /// Get a specific conjugated form
+    func form(person: GrammaticalPerson, number: GrammaticalNumber) -> String {
+        switch (person, number) {
+        case (.first, .singular): return first_sg
+        case (.second, .singular): return second_sg
+        case (.third, .singular): return third_sg
+        case (.first, .plural): return first_pl
+        case (.second, .plural): return second_pl
+        case (.third, .plural): return third_pl
+        }
+    }
+
+    /// All conjugated forms
+    var allForms: [ConjugatedForm] {
+        [
+            ConjugatedForm(form: first_sg, person: .first, number: .singular),
+            ConjugatedForm(form: second_sg, person: .second, number: .singular),
+            ConjugatedForm(form: third_sg, person: .third, number: .singular),
+            ConjugatedForm(form: first_pl, person: .first, number: .plural),
+            ConjugatedForm(form: second_pl, person: .second, number: .plural),
+            ConjugatedForm(form: third_pl, person: .third, number: .plural),
+        ]
+    }
+}
+
 // MARK: - Fitzgerald Key Color Coding (Standard in AAC)
 
 enum WordCategory: String, Codable, CaseIterable {
@@ -117,7 +190,7 @@ struct VocabularyStructure {
 
         // Row 3 - Essential Words (Mixed)
         VocabularyWord(id: "more", english: "more", bulgarian: "още", category: .social, arasaacId: 5508, row: 3, col: 0),
-        VocabularyWord(id: "stop", english: "stop", bulgarian: "спри", category: .verb, arasaacId: 7196, row: 3, col: 1),
+        VocabularyWord(id: "stop", english: "stop", bulgarian: "спирам", category: .verb, arasaacId: 7196, row: 3, col: 1),
         VocabularyWord(id: "yes", english: "yes", bulgarian: "да", category: .social, arasaacId: 5584, row: 3, col: 2),
         VocabularyWord(id: "no", english: "no", bulgarian: "не", category: .social, arasaacId: 5526, row: 3, col: 3),
         VocabularyWord(id: "not", english: "not", bulgarian: "не", category: .social, arasaacId: 32308, row: 3, col: 4),
@@ -322,10 +395,10 @@ struct VocabularyStructure {
         VocabularyWord(id: "listen", english: "listen", bulgarian: "слушам", category: .verb, arasaacId: 6572),
         VocabularyWord(id: "talk", english: "talk", bulgarian: "говоря", category: .verb, arasaacId: 6517),
         VocabularyWord(id: "wait", english: "wait", bulgarian: "чакам", category: .verb, arasaacId: 36914),
-        VocabularyWord(id: "come", english: "come", bulgarian: "ела", category: .verb, arasaacId: 32669),
+        VocabularyWord(id: "come", english: "come", bulgarian: "идвам", category: .verb, arasaacId: 32669),
         VocabularyWord(id: "give", english: "give", bulgarian: "давам", category: .verb, arasaacId: 28431),
         VocabularyWord(id: "take", english: "take", bulgarian: "вземам", category: .verb, arasaacId: 10148),
-        VocabularyWord(id: "open", english: "open", bulgarian: "отвори", category: .verb, arasaacId: 24825),
+        VocabularyWord(id: "open", english: "open", bulgarian: "отварям", category: .verb, arasaacId: 24825),
         VocabularyWord(id: "turn", english: "turn", bulgarian: "завъртам", category: .verb, arasaacId: 6630),
     ]
 
@@ -408,4 +481,171 @@ struct VocabularyStructure {
         }
         return mapping
     }
+
+    /// Get conjugation for a verb by ID
+    static func conjugation(for verbId: String) -> BulgarianConjugation? {
+        verbConjugations[verbId]
+    }
+
+    // MARK: - Bulgarian Verb Conjugations
+    // Generated with LLM assistance, validated by human review
+    // Format: 1sg, 2sg, 3sg, 1pl, 2pl, 3pl (present tense)
+
+    static let verbConjugations: [String: BulgarianConjugation] = [
+        // Core verbs (home screen)
+        "want": BulgarianConjugation(
+            verbId: "want", infinitive: "искам", english: "want",
+            first_sg: "искам", second_sg: "искаш", third_sg: "иска",
+            first_pl: "искаме", second_pl: "искате", third_pl: "искат"
+        ),
+        "like": BulgarianConjugation(
+            verbId: "like", infinitive: "харесвам", english: "like",
+            first_sg: "харесвам", second_sg: "харесваш", third_sg: "харесва",
+            first_pl: "харесваме", second_pl: "харесвате", third_pl: "харесват"
+        ),
+        "have": BulgarianConjugation(
+            verbId: "have", infinitive: "имам", english: "have",
+            first_sg: "имам", second_sg: "имаш", third_sg: "има",
+            first_pl: "имаме", second_pl: "имате", third_pl: "имат"
+        ),
+        "go": BulgarianConjugation(
+            verbId: "go", infinitive: "отивам", english: "go",
+            first_sg: "отивам", second_sg: "отиваш", third_sg: "отива",
+            first_pl: "отиваме", second_pl: "отивате", third_pl: "отиват"
+        ),
+        "get": BulgarianConjugation(
+            verbId: "get", infinitive: "вземам", english: "get",
+            first_sg: "вземам", second_sg: "вземаш", third_sg: "взема",
+            first_pl: "вземаме", second_pl: "вземате", third_pl: "вземат"
+        ),
+        "make": BulgarianConjugation(
+            verbId: "make", infinitive: "правя", english: "make",
+            first_sg: "правя", second_sg: "правиш", third_sg: "прави",
+            first_pl: "правим", second_pl: "правите", third_pl: "правят"
+        ),
+        "do": BulgarianConjugation(
+            verbId: "do", infinitive: "правя", english: "do",
+            first_sg: "правя", second_sg: "правиш", third_sg: "прави",
+            first_pl: "правим", second_pl: "правите", third_pl: "правят"
+        ),
+        "put": BulgarianConjugation(
+            verbId: "put", infinitive: "слагам", english: "put",
+            first_sg: "слагам", second_sg: "слагаш", third_sg: "слага",
+            first_pl: "слагаме", second_pl: "слагате", third_pl: "слагат"
+        ),
+        "see": BulgarianConjugation(
+            verbId: "see", infinitive: "виждам", english: "see",
+            first_sg: "виждам", second_sg: "виждаш", third_sg: "вижда",
+            first_pl: "виждаме", second_pl: "виждате", third_pl: "виждат"
+        ),
+        "eat": BulgarianConjugation(
+            verbId: "eat", infinitive: "ям", english: "eat",
+            first_sg: "ям", second_sg: "ядеш", third_sg: "яде",
+            first_pl: "ядем", second_pl: "ядете", third_pl: "ядат"
+        ),
+        "drink": BulgarianConjugation(
+            verbId: "drink", infinitive: "пия", english: "drink",
+            first_sg: "пия", second_sg: "пиеш", third_sg: "пие",
+            first_pl: "пием", second_pl: "пиете", third_pl: "пият"
+        ),
+        "play": BulgarianConjugation(
+            verbId: "play", infinitive: "играя", english: "play",
+            first_sg: "играя", second_sg: "играеш", third_sg: "играе",
+            first_pl: "играем", second_pl: "играете", third_pl: "играят"
+        ),
+        "stop": BulgarianConjugation(
+            verbId: "stop", infinitive: "спирам", english: "stop",
+            first_sg: "спирам", second_sg: "спираш", third_sg: "спира",
+            first_pl: "спираме", second_pl: "спирате", third_pl: "спират"
+        ),
+        "can": BulgarianConjugation(
+            verbId: "can", infinitive: "мога", english: "can",
+            first_sg: "мога", second_sg: "можеш", third_sg: "може",
+            first_pl: "можем", second_pl: "можете", third_pl: "могат"
+        ),
+
+        // Actions folder verbs
+        "run": BulgarianConjugation(
+            verbId: "run", infinitive: "тичам", english: "run",
+            first_sg: "тичам", second_sg: "тичаш", third_sg: "тича",
+            first_pl: "тичаме", second_pl: "тичате", third_pl: "тичат"
+        ),
+        "walk": BulgarianConjugation(
+            verbId: "walk", infinitive: "ходя", english: "walk",
+            first_sg: "ходя", second_sg: "ходиш", third_sg: "ходи",
+            first_pl: "ходим", second_pl: "ходите", third_pl: "ходят"
+        ),
+        "jump": BulgarianConjugation(
+            verbId: "jump", infinitive: "скачам", english: "jump",
+            first_sg: "скачам", second_sg: "скачаш", third_sg: "скача",
+            first_pl: "скачаме", second_pl: "скачате", third_pl: "скачат"
+        ),
+        "sit": BulgarianConjugation(
+            verbId: "sit", infinitive: "седя", english: "sit",
+            first_sg: "седя", second_sg: "седиш", third_sg: "седи",
+            first_pl: "седим", second_pl: "седите", third_pl: "седят"
+        ),
+        "sleep": BulgarianConjugation(
+            verbId: "sleep", infinitive: "спя", english: "sleep",
+            first_sg: "спя", second_sg: "спиш", third_sg: "спи",
+            first_pl: "спим", second_pl: "спите", third_pl: "спят"
+        ),
+        "read": BulgarianConjugation(
+            verbId: "read", infinitive: "чета", english: "read",
+            first_sg: "чета", second_sg: "четеш", third_sg: "чете",
+            first_pl: "четем", second_pl: "четете", third_pl: "четат"
+        ),
+        "write": BulgarianConjugation(
+            verbId: "write", infinitive: "пиша", english: "write",
+            first_sg: "пиша", second_sg: "пишеш", third_sg: "пише",
+            first_pl: "пишем", second_pl: "пишете", third_pl: "пишат"
+        ),
+        "listen": BulgarianConjugation(
+            verbId: "listen", infinitive: "слушам", english: "listen",
+            first_sg: "слушам", second_sg: "слушаш", third_sg: "слуша",
+            first_pl: "слушаме", second_pl: "слушате", third_pl: "слушат"
+        ),
+        "talk": BulgarianConjugation(
+            verbId: "talk", infinitive: "говоря", english: "talk",
+            first_sg: "говоря", second_sg: "говориш", third_sg: "говори",
+            first_pl: "говорим", second_pl: "говорите", third_pl: "говорят"
+        ),
+        "wait": BulgarianConjugation(
+            verbId: "wait", infinitive: "чакам", english: "wait",
+            first_sg: "чакам", second_sg: "чакаш", third_sg: "чака",
+            first_pl: "чакаме", second_pl: "чакате", third_pl: "чакат"
+        ),
+        "come": BulgarianConjugation(
+            verbId: "come", infinitive: "идвам", english: "come",
+            first_sg: "идвам", second_sg: "идваш", third_sg: "идва",
+            first_pl: "идваме", second_pl: "идвате", third_pl: "идват"
+        ),
+        "give": BulgarianConjugation(
+            verbId: "give", infinitive: "давам", english: "give",
+            first_sg: "давам", second_sg: "даваш", third_sg: "дава",
+            first_pl: "даваме", second_pl: "давате", third_pl: "дават"
+        ),
+        "take": BulgarianConjugation(
+            verbId: "take", infinitive: "вземам", english: "take",
+            first_sg: "вземам", second_sg: "вземаш", third_sg: "взема",
+            first_pl: "вземаме", second_pl: "вземате", third_pl: "вземат"
+        ),
+        "open": BulgarianConjugation(
+            verbId: "open", infinitive: "отварям", english: "open",
+            first_sg: "отварям", second_sg: "отваряш", third_sg: "отваря",
+            first_pl: "отваряме", second_pl: "отваряте", third_pl: "отварят"
+        ),
+        "turn": BulgarianConjugation(
+            verbId: "turn", infinitive: "завъртам", english: "turn",
+            first_sg: "завъртам", second_sg: "завърташ", third_sg: "завърта",
+            first_pl: "завъртаме", second_pl: "завъртате", third_pl: "завъртат"
+        ),
+
+        // Additional verbs from feelings/other categories
+        "love": BulgarianConjugation(
+            verbId: "love", infinitive: "обичам", english: "love",
+            first_sg: "обичам", second_sg: "обичаш", third_sg: "обича",
+            first_pl: "обичаме", second_pl: "обичате", third_pl: "обичат"
+        ),
+    ]
 }

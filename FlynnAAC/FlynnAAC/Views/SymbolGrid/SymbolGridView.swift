@@ -24,6 +24,7 @@ struct SymbolGridView: View {
     let category: Category?
     let language: Language
     let onSymbolTapped: (Symbol) -> Void
+    let onSymbolWithLabelTapped: ((Symbol, String) -> Void)?  // For conjugated verbs
     let onCategoryTapped: (Category) -> Void
     let onBackTapped: () -> Void
 
@@ -31,39 +32,88 @@ struct SymbolGridView: View {
     @State private var gridItems: [GridItemType] = []
     @State private var store = SymbolStore()
 
+    // Conjugation picker state
+    @State private var showingConjugationPicker = false
+    @State private var selectedVerbSymbol: Symbol?
+    @State private var selectedVerbConjugation: BulgarianConjugation?
+
+    init(
+        category: Category?,
+        language: Language,
+        onSymbolTapped: @escaping (Symbol) -> Void,
+        onSymbolWithLabelTapped: ((Symbol, String) -> Void)? = nil,
+        onCategoryTapped: @escaping (Category) -> Void,
+        onBackTapped: @escaping () -> Void
+    ) {
+        self.category = category
+        self.language = language
+        self.onSymbolTapped = onSymbolTapped
+        self.onSymbolWithLabelTapped = onSymbolWithLabelTapped
+        self.onCategoryTapped = onCategoryTapped
+        self.onBackTapped = onBackTapped
+    }
+
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: Self.cellSpacing), count: settings.gridColumns)
     }
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
-                // Back button always at position [0,0] when in a category
-                if category != nil {
-                    BackButton(action: onBackTapped)
-                }
+        ZStack {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
+                    // Back button always at position [0,0] when in a category
+                    if category != nil {
+                        BackButton(action: onBackTapped)
+                    }
 
-                // All items sorted by position
-                ForEach(gridItems) { item in
-                    switch item {
-                    case .symbol(let symbol):
-                        SymbolCell(
-                            symbol: symbol,
-                            language: language,
-                            onTap: { onSymbolTapped(symbol) }
-                        )
-                    case .category(let cat):
-                        CategoryCell(
-                            category: cat,
-                            language: language,
-                            onTap: { onCategoryTapped(cat) }
-                        )
+                    // All items sorted by position
+                    ForEach(gridItems) { item in
+                        switch item {
+                        case .symbol(let symbol):
+                            SymbolCell(
+                                symbol: symbol,
+                                language: language,
+                                onTap: { handleSymbolTap(symbol) },
+                                onLongPress: { handleSymbolLongPress(symbol) }
+                            )
+                        case .category(let cat):
+                            CategoryCell(
+                                category: cat,
+                                language: language,
+                                onTap: { onCategoryTapped(cat) }
+                            )
+                        }
                     }
                 }
+                .padding(FlynnTheme.Layout.screenMargin)
             }
-            .padding(FlynnTheme.Layout.screenMargin)
+            .background(FlynnTheme.Colors.background)
+
+            // Conjugation picker overlay
+            if showingConjugationPicker,
+               let symbol = selectedVerbSymbol,
+               let conjugation = selectedVerbConjugation {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showingConjugationPicker = false
+                    }
+
+                ConjugationPickerView(
+                    symbol: symbol,
+                    conjugation: conjugation,
+                    onSelect: { form, _, _ in
+                        handleConjugationSelected(symbol: symbol, form: form)
+                    },
+                    onCancel: {
+                        showingConjugationPicker = false
+                    }
+                )
+                .padding()
+                .transition(.scale.combined(with: .opacity))
+            }
         }
-        .background(FlynnTheme.Colors.background)
+        .animation(.easeInOut(duration: 0.2), value: showingConjugationPicker)
         .task {
             await loadContent()
         }
@@ -71,6 +121,47 @@ struct SymbolGridView: View {
             Task {
                 await loadContent()
             }
+        }
+    }
+
+    private func handleSymbolTap(_ symbol: Symbol) {
+        // Check if this is a verb in Bulgarian mode that has conjugations
+        if language == .bulgarian,
+           symbol.category == .verb,
+           let conjugation = VocabularyStructure.conjugation(for: symbol.id) {
+            // Default tap uses 1st person singular ("аз" / "I" form)
+            let firstPersonForm = conjugation.first_sg
+            if let onSymbolWithLabelTapped = onSymbolWithLabelTapped {
+                onSymbolWithLabelTapped(symbol, firstPersonForm)
+            } else {
+                onSymbolTapped(symbol)
+            }
+        } else {
+            // Regular tap - add symbol directly
+            onSymbolTapped(symbol)
+        }
+    }
+
+    private func handleSymbolLongPress(_ symbol: Symbol) {
+        // Long press on verbs in Bulgarian mode shows conjugation picker
+        if language == .bulgarian,
+           symbol.category == .verb,
+           let conjugation = VocabularyStructure.conjugation(for: symbol.id) {
+            selectedVerbSymbol = symbol
+            selectedVerbConjugation = conjugation
+            showingConjugationPicker = true
+        }
+    }
+
+    private func handleConjugationSelected(symbol: Symbol, form: String) {
+        showingConjugationPicker = false
+
+        // If we have a callback for conjugated forms, use it
+        if let onSymbolWithLabelTapped = onSymbolWithLabelTapped {
+            onSymbolWithLabelTapped(symbol, form)
+        } else {
+            // Fallback: just add the symbol (default form will be used)
+            onSymbolTapped(symbol)
         }
     }
 

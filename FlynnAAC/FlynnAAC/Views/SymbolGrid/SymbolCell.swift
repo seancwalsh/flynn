@@ -4,45 +4,60 @@ struct SymbolCell: View {
     let symbol: Symbol
     let language: Language
     let onTap: () -> Void
+    var onLongPress: (() -> Void)? = nil
 
     @State private var isPressed = false
     @State private var settings = AppSettings.default
 
     var body: some View {
-        Button(action: {
-            if settings.animationsEnabled {
+        VStack(spacing: FlynnTheme.Layout.spacing4) {
+            symbolImage
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Text(symbol.label(for: language))
+                .font(Self.labelFont)
+                .tracking(Self.labelTracking)
+                .foregroundStyle(FlynnTheme.Colors.textPrimary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(Self.cellPadding)
+        .frame(minWidth: Self.minimumSize, minHeight: Self.minimumSize)
+        .background(
+            (symbol.category?.color.opacity(0.15) ?? FlynnTheme.Colors.surface)
+                .opacity(isPressed ? FlynnTheme.Animation.pressedOpacity : 1.0)
+        )
+        .cornerRadius(FlynnTheme.Layout.cornerRadiusMedium)
+        .scaleEffect(isPressed && settings.animationsEnabled ? Self.tapScaleValue : 1.0)
+        .onTapGesture {
+            triggerTapAnimation()
+            onTap()
+        }
+        .onLongPressGesture(minimumDuration: 0.5, pressing: { pressing in
+            if pressing {
                 withAnimation(FlynnTheme.Animation.quickEasing) {
                     isPressed = true
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + FlynnTheme.Animation.tapScaleUpDuration) {
-                    withAnimation(FlynnTheme.Animation.quickEasing) {
-                        isPressed = false
-                    }
+            }
+        }, perform: {
+            withAnimation(FlynnTheme.Animation.quickEasing) {
+                isPressed = false
+            }
+            onLongPress?()
+        })
+    }
+
+    private func triggerTapAnimation() {
+        if settings.animationsEnabled {
+            withAnimation(FlynnTheme.Animation.quickEasing) {
+                isPressed = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + FlynnTheme.Animation.tapScaleUpDuration) {
+                withAnimation(FlynnTheme.Animation.quickEasing) {
+                    isPressed = false
                 }
             }
-            onTap()
-        }) {
-            VStack(spacing: FlynnTheme.Layout.spacing4) {
-                symbolImage
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                Text(symbol.label(for: language))
-                    .font(Self.labelFont)
-                    .tracking(Self.labelTracking)
-                    .foregroundStyle(FlynnTheme.Colors.textPrimary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-            }
-            .padding(Self.cellPadding)
-            .frame(minWidth: Self.minimumSize, minHeight: Self.minimumSize)
-            .background(
-                (symbol.category?.color.opacity(0.15) ?? FlynnTheme.Colors.surface)
-                    .opacity(isPressed ? FlynnTheme.Animation.pressedOpacity : 1.0)
-            )
-            .cornerRadius(FlynnTheme.Layout.cornerRadiusMedium)
-            .scaleEffect(isPressed && settings.animationsEnabled ? Self.tapScaleValue : 1.0)
         }
-        .buttonStyle(PlainButtonStyle())
     }
 
     /// Returns the appropriate image view for the symbol

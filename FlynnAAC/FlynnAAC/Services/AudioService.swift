@@ -116,8 +116,13 @@ actor AudioService {
     }
 
     func speakPhrase(_ phrase: Phrase, language: Language) async {
-        _lastPlayedLanguage = language
         let text = phrase.text(for: language)
+        await speakPhraseText(text, language: language)
+    }
+
+    /// Speak a phrase text directly (used for conjugated verbs with custom labels)
+    func speakPhraseText(_ text: String, language: Language) async {
+        _lastPlayedLanguage = language
         let cacheKey = PhraseCacheService.generateCacheKey(text: text, language: language)
 
         // 1. Check cache (instant playback)
@@ -159,7 +164,7 @@ actor AudioService {
         audioPlayer?.play()
     }
 
-    private func speakText(_ text: String, language: Language) async {
+    func speakText(_ text: String, language: Language) async {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(identifier: language.voiceIdentifier)
             ?? AVSpeechSynthesisVoice(language: language.rawValue)
