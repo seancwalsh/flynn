@@ -137,12 +137,18 @@ class AACViewModel: ObservableObject {
 
     /// Handle tapping a verb with a specific conjugated form
     func symbolTappedWithLabel(_ symbol: Symbol, label: String) {
-        // Play the conjugated form audio
+        // Play audio for the conjugated form
         Task {
-            do {
-                try await audioService.speakText(label, language: currentLanguage)
-            } catch {
-                print("Audio playback failed: \(error)")
+            // For Bulgarian verbs, the bundled audio contains the first person singular form
+            // If the selected form matches, use the bundled audio for high-quality voice
+            if currentLanguage == .bulgarian,
+               let conjugation = VocabularyStructure.conjugation(for: symbol.id),
+               label == conjugation.first_sg {
+                // Use bundled ElevenLabs audio (it contains the first person form)
+                try? await audioService.play(symbol: symbol, language: currentLanguage)
+            } else {
+                // Different conjugation form - fall back to TTS
+                await audioService.speakText(label, language: currentLanguage)
             }
         }
 
