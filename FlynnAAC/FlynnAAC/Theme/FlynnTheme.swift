@@ -424,17 +424,21 @@ enum SymbolCategory: String, CaseIterable, Codable {
     case pronoun
     case preposition
     case misc
+    case negation
+    case time
 
     var color: Color {
         switch self {
-        case .verb: return FlynnTheme.Colors.categoryVerb
-        case .noun: return FlynnTheme.Colors.categoryNoun
-        case .descriptor: return FlynnTheme.Colors.categoryDescriptor
-        case .social: return FlynnTheme.Colors.categorySocial
-        case .question: return FlynnTheme.Colors.categoryQuestion
-        case .pronoun: return FlynnTheme.Colors.categoryPronoun
-        case .preposition: return FlynnTheme.Colors.categoryPreposition
-        case .misc: return FlynnTheme.Colors.categoryMisc
+        case .verb: return Color(red: 0.2, green: 0.78, blue: 0.35)        // Bright green
+        case .noun: return Color(red: 1.0, green: 0.55, blue: 0.0)         // Bright orange
+        case .descriptor: return Color(red: 0.2, green: 0.6, blue: 1.0)    // Bright blue
+        case .social: return Color(red: 1.0, green: 0.4, blue: 0.6)        // Bright pink
+        case .question: return Color(red: 0.7, green: 0.3, blue: 0.9)      // Bright purple
+        case .pronoun: return Color(red: 1.0, green: 0.84, blue: 0.0)      // Bright golden yellow
+        case .preposition: return Color(red: 1.0, green: 0.5, blue: 0.7)   // Rose pink
+        case .misc: return Color(red: 0.6, green: 0.6, blue: 0.65)         // Medium gray
+        case .negation: return Color(red: 1.0, green: 0.3, blue: 0.3)      // Bright red
+        case .time: return Color(red: 0.6, green: 0.6, blue: 0.65)         // Medium gray
         }
     }
 
@@ -448,6 +452,8 @@ enum SymbolCategory: String, CaseIterable, Codable {
         case .pronoun: return "People"
         case .preposition: return "Places"
         case .misc: return "Other"
+        case .negation: return "Negation"
+        case .time: return "Time"
         }
     }
 }

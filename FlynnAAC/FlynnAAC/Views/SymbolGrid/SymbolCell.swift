@@ -9,22 +9,27 @@ struct SymbolCell: View {
     @State private var isPressed = false
     @State private var settings = AppSettings.default
 
+    private var symbolColor: Color {
+        symbol.category?.color ?? Color(red: 0.6, green: 0.6, blue: 0.65)
+    }
+
     var body: some View {
         VStack(spacing: FlynnTheme.Layout.spacing4) {
             symbolImage
+                .frame(maxWidth: 90, maxHeight: 90)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Text(symbol.label(for: language))
-                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundStyle(.primary)
                 .lineLimit(2)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.5)
         }
-        .padding(Self.cellPadding)
-        .frame(minWidth: Self.minimumSize, minHeight: Self.minimumSize)
+        .padding(FlynnTheme.Layout.spacing6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .glassEffect(
-            .regular.tint((symbol.category?.color ?? .gray).opacity(0.3)).interactive(),
-            in: RoundedRectangle(cornerRadius: 14)
+            .regular.tint(symbolColor.opacity(0.4)).interactive(),
+            in: Rectangle()
         )
         .scaleEffect(isPressed && settings.animationsEnabled ? Self.tapScaleValue : 1.0)
         .onTapGesture {

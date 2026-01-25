@@ -60,51 +60,41 @@ struct SymbolGridView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Beautiful gradient background
-            LinearGradient(
-                colors: [
-                    Color(red: 0.95, green: 0.93, blue: 0.98),  // Soft lavender
-                    Color(red: 0.92, green: 0.96, blue: 0.98),  // Soft blue
-                    Color(red: 0.96, green: 0.94, blue: 0.92)   // Warm cream
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+        GeometryReader { geometry in
+            ZStack {
+                // Beautiful gradient background
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.95, green: 0.93, blue: 0.98),  // Soft lavender
+                        Color(red: 0.92, green: 0.96, blue: 0.98),  // Soft blue
+                        Color(red: 0.96, green: 0.94, blue: 0.92)   // Warm cream
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
 
-            ScrollView {
-                GlassEffectContainer(spacing: 12) {
-                    LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
-                        // Back button always at position [0,0] when in a category
-                        if category != nil {
-                            BackButton(action: onBackTapped)
-                                .glassEffectID("back", in: gridNamespace)
-                        }
+                let padding: CGFloat = 12
+                let spacing: CGFloat = Self.cellSpacing
+                let availableWidth = geometry.size.width - (padding * 2)
+                let availableHeight = geometry.size.height - (padding * 2)
+                let cellWidth = (availableWidth - (spacing * CGFloat(settings.gridColumns - 1))) / CGFloat(settings.gridColumns)
+                let cellHeight = (availableHeight - (spacing * CGFloat(settings.gridRows - 1))) / CGFloat(settings.gridRows)
 
-                        // All items sorted by position
-                        ForEach(gridItems) { item in
-                            switch item {
-                            case .symbol(let symbol):
-                                SymbolCell(
-                                    symbol: symbol,
-                                    language: language,
-                                    onTap: { handleSymbolTap(symbol) },
-                                    onLongPress: { handleSymbolLongPress(symbol) }
-                                )
-                                .glassEffectID(symbol.id, in: gridNamespace)
-                            case .category(let cat):
-                                CategoryCell(
-                                    category: cat,
-                                    language: language,
-                                    onTap: { onCategoryTapped(cat) }
-                                )
-                                .glassEffectID(cat.id, in: gridNamespace)
+                GlassEffectContainer(spacing: spacing) {
+                    VStack(spacing: spacing) {
+                        ForEach(0..<settings.gridRows, id: \.self) { row in
+                            HStack(spacing: spacing) {
+                                ForEach(0..<settings.gridColumns, id: \.self) { col in
+                                    cellView(row: row, col: col)
+                                        .frame(width: cellWidth, height: cellHeight)
+                                        .glassEffectID(cellID(row: row, col: col), in: gridNamespace)
+                                }
                             }
                         }
                     }
                 }
-                .padding(FlynnTheme.Layout.screenMargin)
+                .padding(padding)
             }
         }
         .task {
@@ -203,6 +193,47 @@ struct SymbolGridView: View {
         }
     }
 
+    // MARK: - Grid Cell Helpers
+
+    private func cellID(row: Int, col: Int) -> String {
+        if category != nil && row == 0 && col == 0 {
+            return "back"
+        }
+        if let item = gridItems.first(where: { $0.position.row == row && $0.position.col == col }) {
+            switch item {
+            case .symbol(let s): return s.id
+            case .category(let c): return c.id
+            }
+        }
+        return "empty-\(row)-\(col)"
+    }
+
+    @ViewBuilder
+    private func cellView(row: Int, col: Int) -> some View {
+        if category != nil && row == 0 && col == 0 {
+            BackButton(action: onBackTapped)
+        } else if let item = gridItems.first(where: { $0.position.row == row && $0.position.col == col }) {
+            switch item {
+            case .symbol(let symbol):
+                SymbolCell(
+                    symbol: symbol,
+                    language: language,
+                    onTap: { handleSymbolTap(symbol) },
+                    onLongPress: { handleSymbolLongPress(symbol) }
+                )
+            case .category(let cat):
+                CategoryCell(
+                    category: cat,
+                    language: language,
+                    onTap: { onCategoryTapped(cat) }
+                )
+            }
+        } else {
+            // Empty cell placeholder
+            Color.clear
+        }
+    }
+
     // MARK: - Theme Compliance Properties
     static var cellSpacing: CGFloat { FlynnTheme.Layout.gridCellSpacing }
     static var gridLineColor: Color { FlynnTheme.Colors.border }
@@ -216,14 +247,14 @@ struct BackButton: View {
         Button(action: action) {
             VStack(spacing: FlynnTheme.Layout.spacing4) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text("Back")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
             }
-            .frame(minWidth: 60, minHeight: 60)
-            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .glassEffect(.regular.interactive(), in: Rectangle())
         }
         .buttonStyle(.plain)
     }

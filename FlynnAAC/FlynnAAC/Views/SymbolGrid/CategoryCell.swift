@@ -27,7 +27,7 @@ struct CategoryCell: View {
                     categoryImage
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: 90, maxHeight: 90)
                         .foregroundStyle(.primary)
 
                     // Folder indicator
@@ -36,24 +36,25 @@ struct CategoryCell: View {
                         HStack {
                             Spacer()
                             Image(systemName: "folder.fill")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundStyle(.secondary)
-                                .padding(4)
+                                .padding(6)
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 Text(category.label(for: language))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.5)
             }
-            .padding(FlynnTheme.Layout.gridCellPadding)
-            .frame(minWidth: FlynnTheme.Layout.minimumTouchTarget, minHeight: FlynnTheme.Layout.minimumTouchTarget)
+            .padding(FlynnTheme.Layout.spacing6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .glassEffect(
-                .regular.tint(FlynnTheme.Colors.categoryNoun.opacity(0.2)).interactive(),
-                in: RoundedRectangle(cornerRadius: 14)
+                .regular.tint(category.color.opacity(0.4)).interactive(),
+                in: Rectangle()
             )
             .scaleEffect(isPressed && settings.animationsEnabled ? FlynnTheme.Animation.tapScale : 1.0)
         }
@@ -68,18 +69,29 @@ struct CategoryCell: View {
 
     /// Mapping of category IDs to SF Symbol names
     private static let sfSymbolMapping: [String: String] = [
+        // TD Snap Motor Plan folders
+        "quickfires": "bolt.fill",
+        "keyboard": "keyboard.fill",
+        "greetings": "hand.wave.fill",
+        "personal_needs": "heart.text.square.fill",
+        "repairs": "wrench.and.screwdriver.fill",
+        "connecting": "link",
+        "animals": "pawprint.fill",
+        "descriptors": "paintbrush.pointed.fill",
+        "things": "cube.fill",
         "food": "fork.knife",
-        "drinks": "cup.and.saucer.fill",
         "people": "person.2.fill",
         "places": "map.fill",
         "actions": "figure.walk",
+        "questions": "questionmark.circle.fill",
+        "time": "clock.fill",
+        // Legacy mappings
+        "drinks": "cup.and.saucer.fill",
         "feelings": "heart.fill",
-        "animals": "pawprint.fill",
         "toys": "gamecontroller.fill",
         "clothes": "tshirt.fill",
         "colors": "paintpalette.fill",
         "numbers": "number.circle.fill",
-        "time": "clock.fill",
         "weather": "cloud.sun.fill",
         "body": "figure.stand",
         "school": "book.fill",

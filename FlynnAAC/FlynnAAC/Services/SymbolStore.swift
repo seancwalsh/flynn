@@ -95,9 +95,9 @@ actor SymbolStore {
     private static func createCategoriesFromVocabulary() -> [Category] {
         VocabularyStructure.categoryFolders.map { folder in
             let symbols = folder.words.enumerated().map { (index, word) -> Symbol in
-                // Arrange in grid: 7 columns
-                let row = index / 7
-                let col = index % 7
+                // Arrange in grid: 6 columns (matches TD Snap Motor Plan layout)
+                let row = index / 6
+                let col = index % 6
                 return Symbol(
                     id: word.id,
                     position: GridPosition(row: row, col: col),
@@ -115,7 +115,7 @@ actor SymbolStore {
                 labels: ["en": folder.english, "bg": folder.bulgarian],
                 symbols: symbols,
                 subcategories: [],
-                colorName: "brown"
+                colorName: folder.colorName
             )
         }
     }
@@ -129,8 +129,10 @@ actor SymbolStore {
         case .social: return .social
         case .question: return .question
         case .preposition: return .preposition
-        case .time: return .misc
+        case .time: return .time
         case .category: return .misc
+        case .negation: return .negation
+        case .misc: return .misc
         }
     }
 }
