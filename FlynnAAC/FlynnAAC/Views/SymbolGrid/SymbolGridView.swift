@@ -111,7 +111,7 @@ struct SymbolGridView: View {
             if showingConjugationPicker,
                let symbol = selectedVerbSymbol,
                let conjugation = selectedVerbConjugation {
-                Color.black.opacity(0.25)
+                Color.black.opacity(0.1)
                     .ignoresSafeArea()
                     .onTapGesture {
                         showingConjugationPicker = false
