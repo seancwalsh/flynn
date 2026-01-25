@@ -7,13 +7,15 @@ struct AppSettings: Codable {
     var gridColumns: Int
     var animationsEnabled: Bool
     var speechRate: Float
+    var autoReturnToHome: Bool
 
     static let `default` = AppSettings(
         language: .english,
         gridRows: VocabularyStructure.gridRows,
         gridColumns: VocabularyStructure.gridColumns,
         animationsEnabled: true,
-        speechRate: 0.5
+        speechRate: 0.5,
+        autoReturnToHome: true
     )
 
     init(
@@ -21,13 +23,15 @@ struct AppSettings: Codable {
         gridRows: Int = VocabularyStructure.gridRows,
         gridColumns: Int = VocabularyStructure.gridColumns,
         animationsEnabled: Bool = true,
-        speechRate: Float = 0.5
+        speechRate: Float = 0.5,
+        autoReturnToHome: Bool = true
     ) {
         self.language = language
         self.gridRows = gridRows
         self.gridColumns = gridColumns
         self.animationsEnabled = animationsEnabled
         self.speechRate = speechRate
+        self.autoReturnToHome = autoReturnToHome
     }
 
     var gridSize: (rows: Int, columns: Int) {

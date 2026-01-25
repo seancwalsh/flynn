@@ -31,6 +31,10 @@ struct SettingsView: View {
                         Slider(value: $settings.speechRate, in: 0.1...1.0)
                     }
                 }
+
+                Section("Navigation") {
+                    Toggle("Return to home after selection", isOn: $settings.autoReturnToHome)
+                }
             }
             .navigationTitle("Settings")
             .toolbar {

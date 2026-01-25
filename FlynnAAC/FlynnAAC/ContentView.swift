@@ -20,6 +20,7 @@ struct PhraseItem: Identifiable {
 
 struct ContentView: View {
     @StateObject private var viewModel = AACViewModel()
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
@@ -41,6 +42,9 @@ struct ContentView: View {
                     currentLanguage: viewModel.currentLanguage,
                     onLanguageToggle: {
                         viewModel.toggleLanguage()
+                    },
+                    onSettingsTapped: {
+                        showSettings = true
                     }
                 )
 
@@ -81,32 +85,78 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(settings: $viewModel.settings)
+        }
     }
 }
 
 struct HeaderView: View {
     let currentLanguage: Language
     let onLanguageToggle: () -> Void
+    let onSettingsTapped: () -> Void
 
     var body: some View {
         HStack {
+            // Logo
+            GlassEffectContainer {
+                HStack(spacing: FlynnTheme.Layout.spacing4) {
+                    Text("Flynn")
+                        .font(.custom("Bradley Hand", size: 28))
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.36, green: 0.55, blue: 0.87),  // Soft blue
+                                    Color(red: 0.58, green: 0.44, blue: 0.78)   // Soft purple
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                    Text("AAC")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, FlynnTheme.Layout.spacing12)
+                .padding(.vertical, FlynnTheme.Layout.spacing6)
+                .glassEffect(.regular, in: .capsule)
+            }
+            .padding(.leading, FlynnTheme.Layout.spacing16)
+            .padding(.top, FlynnTheme.Layout.spacing8)
+
             Spacer()
 
-            GlassEffectContainer {
-                Button(action: onLanguageToggle) {
-                    HStack(spacing: FlynnTheme.Layout.spacing8) {
-                        Image(systemName: "globe")
+            HStack(spacing: FlynnTheme.Layout.spacing8) {
+                // Settings button
+                GlassEffectContainer {
+                    Button(action: onSettingsTapped) {
+                        Image(systemName: "gearshape")
                             .font(.system(size: 16, weight: .medium))
-
-                        Text(currentLanguage == .english ? "EN" : "BG")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .padding(FlynnTheme.Layout.spacing8)
+                            .glassEffect(.regular.interactive(), in: .circle)
                     }
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, FlynnTheme.Layout.spacing12)
-                    .padding(.vertical, FlynnTheme.Layout.spacing8)
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+
+                // Language toggle
+                GlassEffectContainer {
+                    Button(action: onLanguageToggle) {
+                        HStack(spacing: FlynnTheme.Layout.spacing8) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 16, weight: .medium))
+
+                            Text(currentLanguage == .english ? "EN" : "BG")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, FlynnTheme.Layout.spacing12)
+                        .padding(.vertical, FlynnTheme.Layout.spacing8)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.trailing, FlynnTheme.Layout.spacing16)
             .padding(.top, FlynnTheme.Layout.spacing8)
@@ -125,7 +175,7 @@ class AACViewModel: ObservableObject {
 
     private let audioService: AudioService
     private let phraseEngine: PhraseEngine
-    private var settings: AppSettings
+    @Published var settings: AppSettings
 
     /// Convenience accessor for symbols (for backward compatibility)
     var phraseSymbols: [Symbol] {
@@ -140,8 +190,9 @@ class AACViewModel: ObservableObject {
         self.phraseEngine = phraseEngine
 
         // Load persisted settings or use defaults
-        self.settings = AppSettings.loadOrDefault()
-        self.currentLanguage = settings.language
+        let loadedSettings = AppSettings.loadOrDefault()
+        self.settings = loadedSettings
+        self.currentLanguage = loadedSettings.language
     }
 
     // MARK: - Symbol Interaction
@@ -160,6 +211,11 @@ class AACViewModel: ObservableObject {
         phraseItems.append(PhraseItem(symbol: symbol))
         Task {
             await phraseEngine.addSymbol(symbol)
+        }
+
+        // Auto-return to home if enabled and we're in a category
+        if settings.autoReturnToHome && currentCategory != nil {
+            currentCategory = nil
         }
     }
 
@@ -184,6 +240,11 @@ class AACViewModel: ObservableObject {
         phraseItems.append(PhraseItem(symbol: symbol, overrideLabel: label))
         Task {
             await phraseEngine.addSymbol(symbol)
+        }
+
+        // Auto-return to home if enabled and we're in a category
+        if settings.autoReturnToHome && currentCategory != nil {
+            currentCategory = nil
         }
     }
 
