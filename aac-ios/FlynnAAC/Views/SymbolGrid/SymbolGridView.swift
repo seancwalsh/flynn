@@ -338,15 +338,17 @@ struct BackButton: View {
         Button(action: action) {
             VStack(spacing: FlynnTheme.Layout.spacing4) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(.primary)
                 Text("Back")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .font(FlynnTheme.Typography.captionText)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .glassEffect(.regular.interactive(), in: Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Back")
+        .accessibilityHint("Double tap to go back to the previous screen")
     }
 }

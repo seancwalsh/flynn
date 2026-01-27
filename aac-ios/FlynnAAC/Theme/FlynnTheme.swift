@@ -150,6 +150,7 @@ enum FlynnTheme {
     /// - High legibility at small sizes
     /// - Bulgarian Cyrillic and English Latin support
     /// - Clean, calm appearance
+    /// - Dynamic Type support for accessibility
     enum Typography {
 
         // MARK: Font Families
@@ -161,8 +162,28 @@ enum FlynnTheme {
         /// Monospace for any data display (rare in child app)
         static let monoFamily = Font.Design.monospaced
 
-        // MARK: Symbol Label Sizes
-        // These must be highly legible at small sizes
+        // MARK: Dynamic Type Fonts
+        // These use semantic text styles that scale with user's accessibility settings
+
+        /// Primary symbol label - uses callout style for good visibility
+        /// Scales from ~16pt to ~23pt based on user preferences
+        static let symbolLabel: Font = .system(.callout, design: primaryFamily, weight: .semibold)
+
+        /// Phrase bar symbol labels - smaller to fit more items
+        /// Uses caption style but medium weight for readability
+        static let phraseBarSymbolLabel: Font = .system(.caption, design: primaryFamily, weight: .medium)
+
+        /// Phrase bar main text - for communication output
+        static let phraseBarText: Font = .system(.body, design: primaryFamily, weight: .medium)
+
+        /// Navigation and UI elements
+        static let navigationText: Font = .system(.subheadline, design: primaryFamily, weight: .semibold)
+
+        /// Small captions and hints
+        static let captionText: Font = .system(.caption2, design: primaryFamily, weight: .regular)
+
+        // MARK: Legacy Fixed-Size Fonts (for backwards compatibility)
+        // These are kept for any code that still references them
 
         /// Small grid (5x5 or larger) - compact but readable
         static let symbolLabelSmall = Font.system(size: 11, weight: .medium, design: primaryFamily)
@@ -173,7 +194,7 @@ enum FlynnTheme {
         /// Large grid (3x3 or smaller) - maximum readability
         static let symbolLabelLarge = Font.system(size: 15, weight: .medium, design: primaryFamily)
 
-        // MARK: UI Text
+        // MARK: UI Text (Legacy)
 
         /// Phrase bar text - slightly larger for the communication output
         static let phraseBar = Font.system(size: 16, weight: .medium, design: primaryFamily)

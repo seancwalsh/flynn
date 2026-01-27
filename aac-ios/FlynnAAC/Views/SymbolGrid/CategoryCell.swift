@@ -36,7 +36,7 @@ struct CategoryCell: View {
                         HStack {
                             Spacer()
                             Image(systemName: "folder.fill")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .padding(6)
                         }
@@ -45,7 +45,7 @@ struct CategoryCell: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 Text(category.label(for: language))
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(FlynnTheme.Typography.symbolLabel)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.5)
@@ -59,6 +59,11 @@ struct CategoryCell: View {
             .scaleEffect(isPressed && settings.animationsEnabled ? FlynnTheme.Animation.tapScale : 1.0)
         }
         .buttonStyle(.plain)
+        // MARK: - Accessibility
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(category.label(for: language)) category")
+        .accessibilityHint("Double tap to open this category")
+        .accessibilityAddTraits(.isButton)
     }
 
     /// Returns the appropriate image for the category

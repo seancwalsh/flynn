@@ -29,18 +29,19 @@ struct SettingsView: View {
                     Section("Account") {
                         HStack {
                             Image(systemName: "person.circle.fill")
-                                .font(.system(size: 40))
+                                .font(.largeTitle)
                                 .foregroundStyle(.secondary)
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(user.email)
-                                    .font(.system(size: 16, weight: .medium))
+                                    .font(.body.weight(.medium))
                                 Text(user.role.rawValue.capitalized)
-                                    .font(.system(size: 13))
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                         }
                         .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
                         
                         Button(role: .destructive) {
                             showLogoutConfirmation = true
@@ -224,7 +225,7 @@ struct ChangePassphraseView: View {
 
                     if showError {
                         Text(errorMessage)
-                            .font(.system(size: 14, design: .rounded))
+                            .font(.subheadline)
                             .foregroundStyle(FlynnTheme.Colors.error)
                     }
                 }
@@ -243,7 +244,7 @@ struct ChangePassphraseView: View {
                             Text("Passphrases match")
                         }
                     }
-                    .font(.system(size: 14, design: .rounded))
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                 } header: {
                     Text("Requirements")

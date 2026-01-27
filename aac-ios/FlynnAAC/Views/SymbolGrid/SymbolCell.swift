@@ -20,7 +20,7 @@ struct SymbolCell: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Text(symbol.label(for: language))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .font(FlynnTheme.Typography.symbolLabel)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.5)
@@ -48,6 +48,20 @@ struct SymbolCell: View {
             }
             onLongPress?()
         })
+        // MARK: - Accessibility
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabelText)
+        .accessibilityHint("Double tap to add to phrase")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// Accessibility label including symbol name and optional category context
+    private var accessibilityLabelText: String {
+        let label = symbol.label(for: language)
+        if let category = symbol.category {
+            return "\(label), \(category.displayName)"
+        }
+        return label
     }
 
     private func triggerTapAnimation() {

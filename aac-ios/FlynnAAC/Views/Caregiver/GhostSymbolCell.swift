@@ -26,13 +26,13 @@ struct GhostSymbolCell: View {
 
                 // Eye-slash icon overlay
                 Image(systemName: "eye.slash.fill")
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.title2.weight(.medium))
                     .foregroundStyle(FlynnTheme.Colors.warning)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Text(symbol.label(for: language))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .font(FlynnTheme.Typography.symbolLabel)
                 .foregroundStyle(.primary)
                 .opacity(0.35)
                 .lineLimit(2)

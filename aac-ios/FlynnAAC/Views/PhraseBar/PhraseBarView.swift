@@ -43,13 +43,15 @@ struct PhraseBarView: View {
                         }
                     }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.body.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .frame(width: 40, height: 40)
                             .glassEffect(.regular.interactive())
                     }
                     .disabled(phraseItems.isEmpty)
                     .opacity(phraseItems.isEmpty ? 0.4 : 1)
+                    .accessibilityLabel("Clear phrase")
+                    .accessibilityHint("Double tap to clear all symbols from the phrase bar")
 
                     // Speak button
                     Button(action: {
@@ -61,7 +63,7 @@ struct PhraseBarView: View {
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
                                 Image(systemName: "speaker.wave.2.fill")
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.body.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .scaleEffect(isPulsing ? 1.15 : 1.0)
                             }
@@ -71,12 +73,26 @@ struct PhraseBarView: View {
                     }
                     .disabled(phraseItems.isEmpty || isGeneratingAudio)
                     .opacity(phraseItems.isEmpty ? 0.4 : 1)
+                    .accessibilityLabel(speakButtonAccessibilityLabel)
+                    .accessibilityHint("Double tap to speak the phrase")
                 }
             }
             .padding(.horizontal, FlynnTheme.Layout.spacing12)
             .padding(.vertical, FlynnTheme.Layout.spacing8)
         }
         .frame(height: Self.heightValue)
+    }
+
+    /// Accessibility label for speak button that announces the phrase content
+    private var speakButtonAccessibilityLabel: String {
+        if isGeneratingAudio {
+            return "Generating speech"
+        }
+        if phraseItems.isEmpty {
+            return "Speak phrase, empty"
+        }
+        let phraseText = phraseItems.map { $0.label(for: language) }.joined(separator: " ")
+        return "Speak: \(phraseText)"
     }
 
     private func speakPhrase() {
@@ -114,7 +130,7 @@ struct PhraseSymbolCell: View {
                     )
 
                 Text(phraseItem.label(for: language))
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .font(FlynnTheme.Typography.phraseBarSymbolLabel)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -127,6 +143,8 @@ struct PhraseSymbolCell: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(phraseItem.label(for: language))
+        .accessibilityHint("Double tap to remove from phrase")
     }
 }
 
