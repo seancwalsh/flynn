@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+.coverage/
+
+# Drizzle
+drizzle/meta/
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# Bun
+bun.lockb
+
+# Misc
+*.bak
+*.tmp
