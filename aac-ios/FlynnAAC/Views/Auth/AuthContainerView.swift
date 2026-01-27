@@ -1,4 +1,5 @@
 import SwiftUI
+import ClerkSDK
 
 /// Container view that shows either auth screens or main content
 struct AuthContainerView<Content: View>: View {
@@ -14,37 +15,7 @@ struct AuthContainerView<Content: View>: View {
         Group {
             if isCheckingAuth {
                 // Loading state while checking auth
-                ZStack {
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.95, green: 0.93, blue: 0.98),
-                            Color(red: 0.92, green: 0.96, blue: 0.98),
-                            Color(red: 0.96, green: 0.94, blue: 0.92)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .ignoresSafeArea()
-                    
-                    VStack(spacing: 16) {
-                        Text("Flynn")
-                            .font(.custom("Bradley Hand", size: 56))
-                            .fontWeight(.bold)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.36, green: 0.55, blue: 0.87),
-                                        Color(red: 0.58, green: 0.44, blue: 0.78)
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                        
-                        ProgressView()
-                            .scaleEffect(1.2)
-                    }
-                }
+                splashView
             } else if authService.isAuthenticated {
                 // Show main content
                 content()
@@ -60,11 +31,46 @@ struct AuthContainerView<Content: View>: View {
         }
     }
     
+    private var splashView: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.95, green: 0.93, blue: 0.98),
+                    Color(red: 0.92, green: 0.96, blue: 0.98),
+                    Color(red: 0.96, green: 0.94, blue: 0.92)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: 16) {
+                Text("Flynn")
+                    .font(.custom("Bradley Hand", size: 56))
+                    .fontWeight(.bold)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.36, green: 0.55, blue: 0.87),
+                                Color(red: 0.58, green: 0.44, blue: 0.78)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                
+                ProgressView()
+                    .scaleEffect(1.2)
+            }
+        }
+    }
+    
     private func restoreSession() async {
         // Small delay to show splash
         try? await Task.sleep(nanoseconds: 500_000_000)
         
-        _ = await authService.restoreSession()
+        // Check Clerk session
+        await authService.checkClerkSession()
         
         withAnimation {
             isCheckingAuth = false

@@ -25,6 +25,19 @@ enum APIEnvironment: String, CaseIterable {
     var apiBaseURL: URL {
         baseURL.appendingPathComponent("api").appendingPathComponent(apiVersion)
     }
+    
+    /// Clerk publishable key for this environment
+    var clerkPublishableKey: String {
+        switch self {
+        case .development:
+            // Test key - replace with your Clerk test key
+            return "pk_test_REPLACE_WITH_YOUR_KEY"
+        case .staging:
+            return "pk_test_REPLACE_WITH_YOUR_KEY"
+        case .production:
+            return "pk_live_REPLACE_WITH_YOUR_KEY"
+        }
+    }
 }
 
 /// Global API configuration
@@ -53,4 +66,8 @@ struct APIConfiguration {
     static func url(for path: String) -> URL {
         apiBaseURL.appendingPathComponent(path)
     }
+    
+    // MARK: - Clerk Configuration
+    
+    static var clerkPublishableKey: String { environment.clerkPublishableKey }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
+import ClerkSDK
 
-/// Login screen for email/password authentication
+/// Login screen using Clerk authentication
 struct LoginView: View {
     @ObservedObject var authService: AuthService
     @State private var email = ""
@@ -213,7 +214,7 @@ struct LoginView: View {
         focusedField = nil
         
         do {
-            try await authService.login(email: email, password: password)
+            try await authService.signIn(email: email, password: password)
         } catch {
             // Error is already stored in authService
         }

@@ -9,12 +9,20 @@ options:
 settings:
   SWIFT_VERSION: "5.9"
 
+packages:
+  ClerkSDK:
+    url: https://github.com/clerk/clerk-ios
+    from: "0.50.0"
+
 targets:
   FlynnAAC:
     type: application
     platform: iOS
     sources:
       - FlynnAAC
+    dependencies:
+      - package: ClerkSDK
+        product: ClerkSDK
     info:
       path: FlynnAAC/Info.plist
       properties:

@@ -236,6 +236,27 @@ Before going live:
 | `REDIS_URL` | No | - | Redis connection string (for caching/queues) |
 | `SENTRY_DSN` | No | - | Sentry DSN for error tracking |
 | `TEST_DATABASE_URL` | No | - | Test database connection (local dev only) |
+| `CLERK_SECRET_KEY` | **Yes** | - | Clerk secret key (from dashboard.clerk.com) |
+| `CLERK_PUBLISHABLE_KEY` | **Yes** | - | Clerk publishable key |
+| `CLERK_WEBHOOK_SECRET` | **Yes** | - | Clerk webhook signing secret |
+
+### Clerk Authentication Setup
+
+Flynn uses [Clerk](https://clerk.com) for authentication. To set up:
+
+1. Create a Clerk application at [dashboard.clerk.com](https://dashboard.clerk.com)
+2. Copy your API keys from the Clerk Dashboard → API Keys
+3. Set up webhooks:
+   - Go to Webhooks in Clerk Dashboard
+   - Add endpoint: `https://your-api.com/api/v1/auth/webhook`
+   - Subscribe to: `user.created`, `user.updated`, `user.deleted`
+   - Copy the signing secret
+
+**For iOS app:**
+- Add `CLERK_PUBLISHABLE_KEY` to the iOS app configuration
+
+**For web app:**
+- Add `VITE_CLERK_PUBLISHABLE_KEY` to the environment
 
 ### Generating Database URLs
 

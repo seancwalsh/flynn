@@ -1,121 +1,147 @@
 /**
- * Authentication Routes
+ * Authentication Routes (Clerk)
  * 
- * POST /register - Register new user
- * POST /login    - Login and get tokens
- * POST /device   - Register device (for iOS app)
- * POST /refresh  - Refresh access token
+ * POST /webhook     - Clerk webhook for user events
+ * POST /device      - Register device (for iOS app push notifications)
+ * DELETE /device    - Unregister device
+ * GET /me           - Get current user info
  */
 
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
+import { Webhook } from "svix";
 import { AppError } from "../../../middleware/error-handler";
 import { authRateLimiter } from "../../../middleware/rate-limiter";
 import { requireAuth } from "../../../middleware/auth";
 import {
-  createUser,
+  createUserFromClerk,
+  findUserByClerkId,
   findUserByEmail,
-  verifyPassword,
-  generateAuthTokens,
-  refreshAuthTokens,
+  linkUserToClerk,
+  updateUserEmail,
+  deleteUserByClerkId,
   registerDevice,
-  revokeAllUserTokens,
+  unregisterDevice,
 } from "../../../services/auth";
+import { env } from "../../../config/env";
 
 export const authRoutes = new Hono();
 
-// Apply rate limiting to all auth routes
-authRoutes.use("*", authRateLimiter);
-
 // Validation schemas
-const registerSchema = z.object({
-  email: z.email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["caregiver", "therapist", "admin"]),
-});
-
-const loginSchema = z.object({
-  email: z.email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
-});
-
 const deviceSchema = z.object({
   deviceToken: z.string().min(1, "Device token is required"),
   platform: z.enum(["ios", "android", "web"]),
 });
 
-const refreshSchema = z.object({
-  refreshToken: z.string().min(1, "Refresh token is required"),
-});
+// Clerk webhook event types
+interface ClerkWebhookEvent {
+  type: string;
+  data: {
+    id: string;
+    email_addresses?: Array<{ id: string; email_address: string }>;
+    primary_email_address_id?: string;
+    public_metadata?: { role?: string };
+    unsafe_metadata?: { role?: string };
+  };
+}
 
 /**
- * POST /register - Register a new user
+ * POST /webhook - Clerk webhook for user lifecycle events
+ * 
+ * Handles: user.created, user.updated, user.deleted
  */
-authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
-  const { email, password, role } = c.req.valid("json");
+authRoutes.post("/webhook", async (c) => {
+  const svixId = c.req.header("svix-id");
+  const svixTimestamp = c.req.header("svix-timestamp");
+  const svixSignature = c.req.header("svix-signature");
   
-  // Check if user already exists
-  const existingUser = await findUserByEmail(email);
-  if (existingUser) {
-    throw new AppError("Email already registered", 409, "EMAIL_EXISTS");
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    throw new AppError("Missing Svix headers", 400, "INVALID_WEBHOOK");
   }
   
-  // Create user
-  const user = await createUser(email, password, role);
+  const body = await c.req.text();
   
-  // Generate tokens
-  const tokens = await generateAuthTokens(user);
+  // Verify webhook signature (skip in test mode)
+  let event: ClerkWebhookEvent;
   
-  return c.json({
-    message: "Registration successful",
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    },
-    ...tokens,
-  }, 201);
-});
-
-/**
- * POST /login - Login and get tokens
- */
-authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
-  const { email, password } = c.req.valid("json");
-  
-  // Find user
-  const user = await findUserByEmail(email);
-  if (!user) {
-    // Use generic message to prevent email enumeration
-    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
+  if (env.CLERK_WEBHOOK_SECRET && env.NODE_ENV !== "test") {
+    try {
+      const wh = new Webhook(env.CLERK_WEBHOOK_SECRET);
+      event = wh.verify(body, {
+        "svix-id": svixId,
+        "svix-timestamp": svixTimestamp,
+        "svix-signature": svixSignature,
+      }) as ClerkWebhookEvent;
+    } catch (err) {
+      console.error("Webhook verification failed:", err);
+      throw new AppError("Invalid webhook signature", 400, "INVALID_SIGNATURE");
+    }
+  } else {
+    // In development/test without webhook secret, parse directly
+    event = JSON.parse(body) as ClerkWebhookEvent;
   }
   
-  // Verify password
-  const isValid = await verifyPassword(password, user.passwordHash);
-  if (!isValid) {
-    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
+  const { type, data } = event;
+  
+  switch (type) {
+    case "user.created": {
+      const clerkId = data.id;
+      const emailObj = data.email_addresses?.find(e => e.id === data.primary_email_address_id);
+      const email = emailObj?.email_address;
+      
+      if (!email) {
+        console.error("User created without email:", clerkId);
+        return c.json({ received: true });
+      }
+      
+      // Check if user already exists by email (migration scenario)
+      const existingUser = await findUserByEmail(email);
+      if (existingUser) {
+        // Link existing user to Clerk
+        await linkUserToClerk(existingUser.id, clerkId);
+        console.log(`Linked existing user ${existingUser.id} to Clerk ${clerkId}`);
+      } else {
+        // Create new user
+        // Get role from metadata (set during signup) or default to caregiver
+        const role = (data.public_metadata?.role || data.unsafe_metadata?.role || "caregiver") as "caregiver" | "therapist" | "admin";
+        await createUserFromClerk(clerkId, email, role);
+        console.log(`Created new user for Clerk ${clerkId}`);
+      }
+      break;
+    }
+    
+    case "user.updated": {
+      const clerkId = data.id;
+      const emailObj = data.email_addresses?.find(e => e.id === data.primary_email_address_id);
+      const email = emailObj?.email_address;
+      
+      if (email) {
+        await updateUserEmail(clerkId, email);
+        console.log(`Updated email for Clerk user ${clerkId}`);
+      }
+      break;
+    }
+    
+    case "user.deleted": {
+      const clerkId = data.id;
+      await deleteUserByClerkId(clerkId);
+      console.log(`Deleted user for Clerk ${clerkId}`);
+      break;
+    }
+    
+    default:
+      console.log(`Unhandled webhook event: ${type}`);
   }
   
-  // Generate tokens
-  const tokens = await generateAuthTokens(user);
-  
-  return c.json({
-    message: "Login successful",
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    },
-    ...tokens,
-  });
+  return c.json({ received: true });
 });
 
 /**
  * POST /device - Register a device for push notifications
  * Requires authentication
  */
-authRoutes.post("/device", requireAuth(), zValidator("json", deviceSchema), async (c) => {
+authRoutes.post("/device", requireAuth(), authRateLimiter, zValidator("json", deviceSchema), async (c) => {
   const { deviceToken, platform } = c.req.valid("json");
   const user = c.get("user");
   
@@ -128,34 +154,17 @@ authRoutes.post("/device", requireAuth(), zValidator("json", deviceSchema), asyn
 });
 
 /**
- * POST /refresh - Refresh access token
- */
-authRoutes.post("/refresh", zValidator("json", refreshSchema), async (c) => {
-  const { refreshToken } = c.req.valid("json");
-  
-  const tokens = await refreshAuthTokens(refreshToken);
-  
-  if (!tokens) {
-    throw new AppError("Invalid or expired refresh token", 401, "INVALID_REFRESH_TOKEN");
-  }
-  
-  return c.json({
-    message: "Token refreshed successfully",
-    ...tokens,
-  });
-});
-
-/**
- * POST /logout - Revoke all refresh tokens (logout from all devices)
+ * DELETE /device - Unregister a device
  * Requires authentication
  */
-authRoutes.post("/logout", requireAuth(), async (c) => {
+authRoutes.delete("/device", requireAuth(), authRateLimiter, zValidator("json", deviceSchema.pick({ deviceToken: true })), async (c) => {
+  const { deviceToken } = c.req.valid("json");
   const user = c.get("user");
   
-  await revokeAllUserTokens(user.id);
+  await unregisterDevice(user.id, deviceToken);
   
   return c.json({
-    message: "Logged out from all devices",
+    message: "Device unregistered successfully",
   });
 });
 
@@ -167,6 +176,10 @@ authRoutes.get("/me", requireAuth(), async (c) => {
   const user = c.get("user");
   
   return c.json({
-    user,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    },
   });
 });

@@ -1,94 +1,227 @@
 /**
- * Auth Service Unit Tests
+ * Auth Service Unit Tests (Clerk)
  * 
  * Tests for auth utility functions that don't require database access.
+ * Note: JWT/password handling is now managed by Clerk.
  */
 
-import { describe, test, expect } from "bun:test";
-import {
-  hashPassword,
-  verifyPassword,
-  generateRandomToken,
-  hashToken,
-} from "../../services/auth";
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { setupTestDatabase, cleanTestData, closeTestDb, teardownTestDatabase } from "../setup";
 
-describe("Auth Service - Password Hashing", () => {
-  test("hashPassword returns a hash different from the input", async () => {
-    const password = "mySecurePassword123";
-    const hash = await hashPassword(password);
-    
-    expect(hash).not.toBe(password);
-    expect(hash.length).toBeGreaterThan(50); // bcrypt hashes are ~60 chars
+describe("Auth Service - User Management", () => {
+  beforeAll(async () => {
+    process.env["DATABASE_URL"] = process.env["TEST_DATABASE_URL"] ?? 
+      "postgres://postgres:postgres@localhost:5433/flynn_aac_test";
+    await setupTestDatabase();
   });
 
-  test("verifyPassword returns true for correct password", async () => {
-    const password = "mySecurePassword123";
-    const hash = await hashPassword(password);
-    
-    const isValid = await verifyPassword(password, hash);
-    expect(isValid).toBe(true);
+  beforeEach(async () => {
+    await cleanTestData();
   });
 
-  test("verifyPassword returns false for incorrect password", async () => {
-    const password = "mySecurePassword123";
-    const wrongPassword = "wrongPassword456";
-    const hash = await hashPassword(password);
-    
-    const isValid = await verifyPassword(wrongPassword, hash);
-    expect(isValid).toBe(false);
+  afterAll(async () => {
+    await teardownTestDatabase();
+    await closeTestDb();
   });
 
-  test("same password produces different hashes (due to salt)", async () => {
-    const password = "mySecurePassword123";
-    const hash1 = await hashPassword(password);
-    const hash2 = await hashPassword(password);
+  test("createUserFromClerk creates a user with Clerk ID", async () => {
+    const { createUserFromClerk } = await import("../../services/auth");
     
-    expect(hash1).not.toBe(hash2);
+    const user = await createUserFromClerk(
+      "clerk_test_123",
+      "test@example.com",
+      "caregiver"
+    );
     
-    // But both should verify correctly
-    expect(await verifyPassword(password, hash1)).toBe(true);
-    expect(await verifyPassword(password, hash2)).toBe(true);
+    expect(user.id).toBeDefined();
+    expect(user.clerkId).toBe("clerk_test_123");
+    expect(user.email).toBe("test@example.com");
+    expect(user.role).toBe("caregiver");
+  });
+
+  test("createUserFromClerk normalizes email to lowercase", async () => {
+    const { createUserFromClerk } = await import("../../services/auth");
+    
+    const user = await createUserFromClerk(
+      "clerk_test_456",
+      "TEST@EXAMPLE.COM",
+      "therapist"
+    );
+    
+    expect(user.email).toBe("test@example.com");
+  });
+
+  test("findUserByClerkId returns user with matching Clerk ID", async () => {
+    const { createUserFromClerk, findUserByClerkId } = await import("../../services/auth");
+    
+    const created = await createUserFromClerk(
+      "clerk_find_123",
+      "find@example.com",
+      "caregiver"
+    );
+    
+    const found = await findUserByClerkId("clerk_find_123");
+    
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(created.id);
+    expect(found!.email).toBe("find@example.com");
+  });
+
+  test("findUserByClerkId returns null for non-existent Clerk ID", async () => {
+    const { findUserByClerkId } = await import("../../services/auth");
+    
+    const found = await findUserByClerkId("clerk_nonexistent");
+    
+    expect(found).toBeNull();
+  });
+
+  test("findUserByEmail returns user with matching email", async () => {
+    const { createUserFromClerk, findUserByEmail } = await import("../../services/auth");
+    
+    await createUserFromClerk(
+      "clerk_email_123",
+      "email@example.com",
+      "caregiver"
+    );
+    
+    const found = await findUserByEmail("email@example.com");
+    
+    expect(found).not.toBeNull();
+    expect(found!.email).toBe("email@example.com");
+  });
+
+  test("findUserByEmail is case-insensitive", async () => {
+    const { createUserFromClerk, findUserByEmail } = await import("../../services/auth");
+    
+    await createUserFromClerk(
+      "clerk_case_123",
+      "case@example.com",
+      "caregiver"
+    );
+    
+    const found = await findUserByEmail("CASE@EXAMPLE.COM");
+    
+    expect(found).not.toBeNull();
+    expect(found!.email).toBe("case@example.com");
+  });
+
+  test("linkUserToClerk updates user's Clerk ID", async () => {
+    const { createUserFromClerk, linkUserToClerk, findUserByClerkId } = await import("../../services/auth");
+    
+    // Create user without Clerk ID linkage
+    const user = await createUserFromClerk(
+      "clerk_old_123",
+      "link@example.com",
+      "caregiver"
+    );
+    
+    // Link to a new Clerk ID
+    await linkUserToClerk(user.id, "clerk_new_456");
+    
+    // Old ID should not find user
+    const oldLookup = await findUserByClerkId("clerk_old_123");
+    expect(oldLookup).toBeNull();
+    
+    // New ID should find user
+    const newLookup = await findUserByClerkId("clerk_new_456");
+    expect(newLookup).not.toBeNull();
+    expect(newLookup!.id).toBe(user.id);
+  });
+
+  test("updateUserEmail updates email for Clerk user", async () => {
+    const { createUserFromClerk, updateUserEmail, findUserByEmail } = await import("../../services/auth");
+    
+    await createUserFromClerk(
+      "clerk_update_123",
+      "old@example.com",
+      "caregiver"
+    );
+    
+    await updateUserEmail("clerk_update_123", "new@example.com");
+    
+    const oldLookup = await findUserByEmail("old@example.com");
+    expect(oldLookup).toBeNull();
+    
+    const newLookup = await findUserByEmail("new@example.com");
+    expect(newLookup).not.toBeNull();
+    expect(newLookup!.clerkId).toBe("clerk_update_123");
+  });
+
+  test("deleteUserByClerkId removes user", async () => {
+    const { createUserFromClerk, deleteUserByClerkId, findUserByClerkId } = await import("../../services/auth");
+    
+    await createUserFromClerk(
+      "clerk_delete_123",
+      "delete@example.com",
+      "caregiver"
+    );
+    
+    await deleteUserByClerkId("clerk_delete_123");
+    
+    const found = await findUserByClerkId("clerk_delete_123");
+    expect(found).toBeNull();
   });
 });
 
-describe("Auth Service - Token Generation", () => {
-  test("generateRandomToken returns a 64-char hex string", () => {
-    const token = generateRandomToken();
-    
-    expect(token.length).toBe(64); // 32 bytes = 64 hex chars
-    expect(/^[a-f0-9]+$/i.test(token)).toBe(true);
+describe("Auth Service - Device Registration", () => {
+  beforeAll(async () => {
+    process.env["DATABASE_URL"] = process.env["TEST_DATABASE_URL"] ?? 
+      "postgres://postgres:postgres@localhost:5433/flynn_aac_test";
+    await setupTestDatabase();
   });
 
-  test("generateRandomToken returns unique tokens", () => {
-    const tokens = new Set<string>();
-    
-    for (let i = 0; i < 100; i++) {
-      tokens.add(generateRandomToken());
-    }
-    
-    expect(tokens.size).toBe(100);
+  beforeEach(async () => {
+    await cleanTestData();
   });
 
-  test("hashToken returns consistent hash for same input", () => {
-    const token = "test-token-12345";
-    const hash1 = hashToken(token);
-    const hash2 = hashToken(token);
-    
-    expect(hash1).toBe(hash2);
+  afterAll(async () => {
+    await teardownTestDatabase();
+    await closeTestDb();
   });
 
-  test("hashToken returns different hashes for different inputs", () => {
-    const hash1 = hashToken("token1");
-    const hash2 = hashToken("token2");
+  test("registerDevice creates a new device", async () => {
+    const { createUserFromClerk, registerDevice } = await import("../../services/auth");
     
-    expect(hash1).not.toBe(hash2);
+    const user = await createUserFromClerk(
+      "clerk_device_123",
+      "device@example.com",
+      "caregiver"
+    );
+    
+    const device = await registerDevice(user.id, "apns-token-123", "ios");
+    
+    expect(device.id).toBeDefined();
+    expect(device.deviceToken).toBe("apns-token-123");
+    expect(device.platform).toBe("ios");
   });
 
-  test("hashToken returns a 64-char SHA-256 hash", () => {
-    const token = "any-token";
-    const hash = hashToken(token);
+  test("registerDevice returns existing device for duplicate", async () => {
+    const { createUserFromClerk, registerDevice } = await import("../../services/auth");
     
-    expect(hash.length).toBe(64); // SHA-256 = 32 bytes = 64 hex chars
-    expect(/^[a-f0-9]+$/i.test(hash)).toBe(true);
+    const user = await createUserFromClerk(
+      "clerk_dup_123",
+      "dup@example.com",
+      "caregiver"
+    );
+    
+    const device1 = await registerDevice(user.id, "apns-token-dup", "ios");
+    const device2 = await registerDevice(user.id, "apns-token-dup", "ios");
+    
+    expect(device1.id).toBe(device2.id);
+  });
+
+  test("unregisterDevice removes device", async () => {
+    const { createUserFromClerk, registerDevice, unregisterDevice } = await import("../../services/auth");
+    
+    const user = await createUserFromClerk(
+      "clerk_unreg_123",
+      "unreg@example.com",
+      "caregiver"
+    );
+    
+    await registerDevice(user.id, "apns-token-unreg", "ios");
+    const result = await unregisterDevice(user.id, "apns-token-unreg");
+    
+    expect(result).toBe(true);
   });
 });

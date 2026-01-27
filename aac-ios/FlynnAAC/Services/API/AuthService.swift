@@ -1,14 +1,15 @@
 import Foundation
+import ClerkSDK
 
-/// Authentication service for login, registration, and user management
+/// Authentication service using Clerk
 @MainActor
 class AuthService: ObservableObject {
     static let shared = AuthService()
     
-    /// Current authenticated user
+    /// Current authenticated user info (from our backend)
     @Published private(set) var currentUser: UserInfo?
     
-    /// Whether the user is authenticated
+    /// Whether the user is authenticated with Clerk
     @Published private(set) var isAuthenticated: Bool = false
     
     /// Loading state
@@ -20,39 +21,85 @@ class AuthService: ObservableObject {
     private let apiClient = APIClient.shared
     
     private init() {
-        // Load cached user on init
-        loadCachedAuth()
+        // Configure Clerk
+        Task {
+            await configureClerk()
+        }
+    }
+    
+    // MARK: - Clerk Configuration
+    
+    private func configureClerk() async {
+        // Configure Clerk with publishable key
+        Clerk.configure(publishableKey: APIConfiguration.clerkPublishableKey)
+        
+        // Observe Clerk session changes
+        await observeClerkSession()
+    }
+    
+    private func observeClerkSession() async {
+        // Check initial session state
+        await checkClerkSession()
+        
+        // Set up observation for session changes
+        Task {
+            for await session in Clerk.shared.$session.values {
+                await handleSessionChange(session)
+            }
+        }
+    }
+    
+    private func handleSessionChange(_ session: Session?) async {
+        if let session = session, session.status == .active {
+            isAuthenticated = true
+            // Fetch user info from our backend
+            try? await refreshUserInfo()
+        } else {
+            isAuthenticated = false
+            currentUser = nil
+        }
     }
     
     // MARK: - Public API
     
-    /// Login with email and password
-    func login(email: String, password: String) async throws {
+    /// Check if user has an active Clerk session
+    func checkClerkSession() async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        if let session = Clerk.shared.session, session.status == .active {
+            isAuthenticated = true
+            try? await refreshUserInfo()
+        } else {
+            isAuthenticated = false
+            currentUser = nil
+        }
+    }
+    
+    /// Sign in with email and password using Clerk
+    func signIn(email: String, password: String) async throws {
         isLoading = true
         lastError = nil
         
         defer { isLoading = false }
         
         do {
-            let request = LoginRequest(email: email, password: password)
-            let response: AuthResponse = try await apiClient.requestUnauthenticated(
-                path: "auth/login",
-                body: request
-            )
+            // Create sign-in attempt with Clerk
+            let signIn = try await SignIn.create(strategy: .identifier(email, password: password))
             
-            // Store tokens and user
-            let tokens = StoredTokens(
-                accessToken: response.accessToken,
-                refreshToken: response.refreshToken,
-                expiresIn: response.expiresIn
-            )
-            AuthKeychain.saveTokens(tokens)
-            AuthKeychain.saveUser(response.user)
-            
-            // Update state
-            currentUser = response.user
-            isAuthenticated = true
-            
+            // Check if sign-in is complete
+            if signIn.status == .complete {
+                // Session is automatically set by Clerk
+                isAuthenticated = true
+                try await refreshUserInfo()
+            } else {
+                // Might need additional verification (e.g., MFA)
+                throw APIError.httpError(statusCode: 400, message: "Additional verification required", code: "VERIFICATION_REQUIRED")
+            }
+        } catch let error as ClerkClientError {
+            let apiError = APIError.httpError(statusCode: 401, message: error.localizedDescription, code: "CLERK_ERROR")
+            lastError = apiError
+            throw apiError
         } catch let error as APIError {
             lastError = error
             throw error
@@ -63,33 +110,35 @@ class AuthService: ObservableObject {
         }
     }
     
-    /// Register a new user
-    func register(email: String, password: String, role: UserRole = .caregiver) async throws {
+    /// Sign up with email, password, and role using Clerk
+    func signUp(email: String, password: String, role: UserRole = .caregiver) async throws {
         isLoading = true
         lastError = nil
         
         defer { isLoading = false }
         
         do {
-            let request = RegisterRequest(email: email, password: password, role: role)
-            let response: AuthResponse = try await apiClient.requestUnauthenticated(
-                path: "auth/register",
-                body: request
+            // Create sign-up with Clerk
+            // Note: Role is stored in unsafe metadata and will be picked up by webhook
+            let signUp = try await SignUp.create(
+                strategy: .standard(emailAddress: email, password: password),
+                unsafeMetadata: ["role": role.rawValue]
             )
             
-            // Store tokens and user
-            let tokens = StoredTokens(
-                accessToken: response.accessToken,
-                refreshToken: response.refreshToken,
-                expiresIn: response.expiresIn
-            )
-            AuthKeychain.saveTokens(tokens)
-            AuthKeychain.saveUser(response.user)
-            
-            // Update state
-            currentUser = response.user
-            isAuthenticated = true
-            
+            // Check if email verification is needed
+            if signUp.status == .missingRequirements {
+                // Prepare email verification
+                try await signUp.prepareVerification(strategy: .emailCode)
+                // The user will need to enter the code - this should trigger a UI change
+                throw APIError.httpError(statusCode: 200, message: "Please check your email for a verification code", code: "VERIFICATION_NEEDED")
+            } else if signUp.status == .complete {
+                isAuthenticated = true
+                try await refreshUserInfo()
+            }
+        } catch let error as ClerkClientError {
+            let apiError = APIError.httpError(statusCode: 400, message: error.localizedDescription, code: "CLERK_ERROR")
+            lastError = apiError
+            throw apiError
         } catch let error as APIError {
             lastError = error
             throw error
@@ -100,28 +149,56 @@ class AuthService: ObservableObject {
         }
     }
     
-    /// Logout current user
-    func logout() async {
+    /// Complete email verification during sign-up
+    func verifyEmail(code: String) async throws {
+        isLoading = true
+        lastError = nil
+        
+        defer { isLoading = false }
+        
+        do {
+            guard let signUp = Clerk.shared.signUp else {
+                throw APIError.httpError(statusCode: 400, message: "No pending sign-up", code: "NO_SIGNUP")
+            }
+            
+            let result = try await signUp.attemptVerification(strategy: .emailCode(code: code))
+            
+            if result.status == .complete {
+                isAuthenticated = true
+                try await refreshUserInfo()
+            }
+        } catch let error as ClerkClientError {
+            let apiError = APIError.httpError(statusCode: 400, message: error.localizedDescription, code: "CLERK_ERROR")
+            lastError = apiError
+            throw apiError
+        } catch let error as APIError {
+            lastError = error
+            throw error
+        } catch {
+            let apiError = APIError.unknown(error)
+            lastError = apiError
+            throw apiError
+        }
+    }
+    
+    /// Sign out from Clerk
+    func signOut() async {
         isLoading = true
         
         defer {
             isLoading = false
-            // Always clear local state regardless of API call success
-            AuthKeychain.clearAll()
-            currentUser = nil
             isAuthenticated = false
+            currentUser = nil
         }
         
-        // Try to revoke tokens on server (best effort)
         do {
-            let _: LogoutResponse = try await apiClient.post(path: "auth/logout")
+            try await Clerk.shared.signOut()
         } catch {
-            // Ignore errors - we still want to clear local state
-            print("Logout API call failed: \(error)")
+            print("Sign out error: \(error)")
         }
     }
     
-    /// Get current user info from server
+    /// Get current user info from our backend
     func refreshUserInfo() async throws {
         guard isAuthenticated else {
             throw APIError.unauthorized
@@ -129,7 +206,6 @@ class AuthService: ObservableObject {
         
         let response: UserInfoResponse = try await apiClient.get(path: "auth/me")
         currentUser = response.user
-        AuthKeychain.saveUser(response.user)
     }
     
     /// Register device for push notifications
@@ -145,48 +221,37 @@ class AuthService: ObservableObject {
         )
     }
     
-    /// Try to restore session from stored tokens
+    /// Try to restore session from Clerk
     /// Returns true if session was restored successfully
     @discardableResult
     func restoreSession() async -> Bool {
-        guard let tokens = AuthKeychain.getTokens(),
-              let user = AuthKeychain.getUser() else {
-            return false
-        }
+        isLoading = true
+        defer { isLoading = false }
         
-        // If token is completely expired, try to refresh
-        if tokens.isCompletelyExpired {
-            do {
-                let refreshed = try await apiClient.refreshToken()
-                if !refreshed {
-                    AuthKeychain.clearAll()
-                    return false
-                }
-            } catch {
-                AuthKeychain.clearAll()
-                return false
+        // Check if Clerk has an active session
+        if let session = Clerk.shared.session, session.status == .active {
+            isAuthenticated = true
+            
+            // Refresh user info in background
+            Task {
+                try? await refreshUserInfo()
             }
+            
+            return true
         }
         
-        // Token is valid (or was refreshed), restore session
-        currentUser = user
-        isAuthenticated = true
-        
-        // Optionally refresh user info in background
-        Task {
-            try? await refreshUserInfo()
-        }
-        
-        return true
+        return false
     }
     
-    // MARK: - Private
-    
-    private func loadCachedAuth() {
-        if let user = AuthKeychain.getUser(), AuthKeychain.hasTokens() {
-            currentUser = user
-            isAuthenticated = true
+    /// Get the current Clerk session token for API calls
+    func getSessionToken() async throws -> String? {
+        guard let session = Clerk.shared.session else {
+            return nil
         }
+        
+        // Get a fresh token from Clerk
+        let tokenResult = try await session.getToken()
+        return tokenResult?.jwt
     }
 }
 

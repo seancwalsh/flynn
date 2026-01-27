@@ -1,4 +1,5 @@
 import Foundation
+import ClerkSDK
 
 /// HTTP methods
 enum HTTPMethod: String {
@@ -9,18 +10,13 @@ enum HTTPMethod: String {
     case delete = "DELETE"
 }
 
-/// Main API client with automatic token refresh
+/// Main API client with Clerk authentication
 actor APIClient {
     static let shared = APIClient()
     
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
-    
-    /// Flag to prevent concurrent token refreshes
-    private var isRefreshingToken = false
-    /// Pending requests waiting for token refresh
-    private var pendingRequests: [CheckedContinuation<Void, Never>] = []
     
     private init() {
         let config = URLSessionConfiguration.default
@@ -50,20 +46,18 @@ actor APIClient {
         // Build URL
         let url = APIConfiguration.url(for: path)
         
-        // Check and refresh token if needed
-        if requiresAuth {
-            try await ensureValidToken()
-        }
-        
         // Build request
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        // Add auth header
-        if requiresAuth, let tokens = AuthKeychain.getTokens() {
-            request.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
+        // Add Clerk auth header if required
+        if requiresAuth {
+            guard let token = await getClerkToken() else {
+                throw APIError.unauthorized
+            }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
         // Encode body
@@ -90,15 +84,9 @@ actor APIClient {
         
         // Handle HTTP errors
         if !(200...299).contains(httpResponse.statusCode) {
-            // Handle 401 with token refresh retry
-            if httpResponse.statusCode == 401 && requiresAuth {
-                let refreshed = try await refreshToken()
-                if refreshed {
-                    // Retry the request once
-                    return try await request(path: path, method: method, body: body, requiresAuth: true)
-                } else {
-                    throw APIError.tokenRefreshFailed
-                }
+            // Handle 401 - session might be invalid
+            if httpResponse.statusCode == 401 {
+                throw APIError.tokenExpired
             }
             
             // Try to decode error response
@@ -121,7 +109,7 @@ actor APIClient {
         }
     }
     
-    /// Perform an unauthenticated request (login, register, refresh)
+    /// Perform an unauthenticated request
     func requestUnauthenticated<T: Decodable>(
         path: String,
         method: HTTPMethod = .post,
@@ -130,67 +118,21 @@ actor APIClient {
         try await request(path: path, method: method, body: body, requiresAuth: false)
     }
     
-    // MARK: - Token Management
+    // MARK: - Clerk Token Management
     
-    /// Ensure we have a valid token, refreshing if necessary
-    private func ensureValidToken() async throws {
-        guard let tokens = AuthKeychain.getTokens() else {
-            throw APIError.unauthorized
-        }
-        
-        if tokens.isExpired {
-            let refreshed = try await refreshToken()
-            if !refreshed {
-                throw APIError.tokenExpired
-            }
-        }
-    }
-    
-    /// Refresh the access token
-    /// Returns true if refresh was successful
-    @discardableResult
-    func refreshToken() async throws -> Bool {
-        // Wait if already refreshing
-        if isRefreshingToken {
-            await withCheckedContinuation { continuation in
-                pendingRequests.append(continuation)
-            }
-            return AuthKeychain.hasTokens()
-        }
-        
-        guard let tokens = AuthKeychain.getTokens() else {
-            return false
-        }
-        
-        isRefreshingToken = true
-        defer {
-            isRefreshingToken = false
-            // Resume all pending requests
-            for continuation in pendingRequests {
-                continuation.resume()
-            }
-            pendingRequests.removeAll()
+    /// Get the current Clerk session token
+    private func getClerkToken() async -> String? {
+        guard let clerkSession = Clerk.shared.session,
+              clerkSession.status == .active else {
+            return nil
         }
         
         do {
-            let refreshRequest = RefreshTokenRequest(refreshToken: tokens.refreshToken)
-            let response: TokenRefreshResponse = try await requestUnauthenticated(
-                path: "auth/refresh",
-                body: refreshRequest
-            )
-            
-            let newTokens = StoredTokens(
-                accessToken: response.accessToken,
-                refreshToken: response.refreshToken,
-                expiresIn: response.expiresIn
-            )
-            AuthKeychain.saveTokens(newTokens)
-            
-            return true
+            let tokenResult = try await clerkSession.getToken()
+            return tokenResult?.jwt
         } catch {
-            // Token refresh failed - clear stored tokens
-            AuthKeychain.clearAll()
-            return false
+            print("Failed to get Clerk token: \(error)")
+            return nil
         }
     }
 }

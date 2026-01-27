@@ -79,11 +79,12 @@ export const insights = pgTable("insights", {
 
 // ===== AUTHENTICATION TABLES =====
 
-// Users - authentication accounts
+// Users - authentication accounts (linked to Clerk)
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
+  clerkId: varchar("clerk_id", { length: 255 }).unique(), // Clerk user ID
   email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }), // Nullable - Clerk handles auth
   role: varchar("role", { length: 50 }).notNull(), // caregiver, therapist, admin
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
