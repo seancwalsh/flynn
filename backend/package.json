@@ -18,16 +18,17 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "setup": "bun install && docker compose up -d && sleep 3 && bun run db:migrate"
   },
   "dependencies": {
-    "@clerk/backend": "^2.29.5",
     "@hono/zod-validator": "^0.7.6",
-    "@sentry/node": "^10.37.0",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",
     "postgres": "^3.4.8",
-    "svix": "^1.84.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

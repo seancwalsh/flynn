@@ -3,8 +3,13 @@ import postgres from "postgres";
 import { env } from "../config/env";
 import * as schema from "./schema";
 
+// Use test database URL when running tests
+const databaseUrl = process.env["TEST_DATABASE_URL"] && process.env["NODE_ENV"] === "test"
+  ? process.env["TEST_DATABASE_URL"]
+  : env.DATABASE_URL;
+
 // Connection for queries
-const queryClient = postgres(env.DATABASE_URL, {
+const queryClient = postgres(databaseUrl, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,

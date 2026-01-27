@@ -16,33 +16,46 @@ Backend API for Flynn AAC - an AI-powered platform for child communication devel
 
 - [Bun](https://bun.sh/) (v1.0+)
 - [Docker](https://www.docker.com/) & Docker Compose
-- Node.js 18+ (optional, for some tooling)
 
-### Setup
+### One-Command Setup
 
-1. **Clone and install dependencies:**
-   ```bash
-   cd flynn-aac-backend
-   bun install
-   ```
+```bash
+# Install deps, start docker, run migrations
+make setup
 
-2. **Start the database:**
-   ```bash
-   docker compose up -d postgres
-   ```
+# Then start developing
+make dev
+```
 
-3. **Generate and run migrations:**
-   ```bash
-   bun run db:generate
-   bun run db:migrate
-   ```
+Or manually:
 
-4. **Start the development server:**
-   ```bash
-   bun run dev
-   ```
+```bash
+bun install
+docker compose up -d
+bun run db:migrate
+bun run dev
+```
+
+### Running Tests
+
+```bash
+make test
+# or: docker compose up -d postgres-test && bun test
+```
 
 The API will be available at `http://localhost:3000`.
+
+### Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `make setup` | First-time setup (deps + docker + migrations) |
+| `make dev` | Start docker + dev server |
+| `make test` | Run tests with test database |
+| `make stop` | Stop docker services |
+| `make logs` | View docker logs |
+| `make db-shell` | Open psql to dev database |
+| `make clean` | Stop + remove all data |
 
 ## Environment Variables
 

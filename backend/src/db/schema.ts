@@ -77,40 +77,6 @@ export const insights = pgTable("insights", {
   generatedAt: timestamp("generated_at").defaultNow().notNull(),
 });
 
-// ===== AUTHENTICATION TABLES =====
-
-// Users - authentication accounts (linked to Clerk)
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  clerkId: varchar("clerk_id", { length: 255 }).unique(), // Clerk user ID
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }), // Nullable - Clerk handles auth
-  role: varchar("role", { length: 50 }).notNull(), // caregiver, therapist, admin
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// Devices - registered devices for push notifications / device-specific auth
-export const devices = pgTable("devices", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  deviceToken: varchar("device_token", { length: 512 }).notNull(),
-  platform: varchar("platform", { length: 20 }).notNull(), // ios, android, web
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// Refresh tokens - for token rotation
-export const refreshTokens = pgTable("refresh_tokens", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  tokenHash: varchar("token_hash", { length: 255 }).notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  revokedAt: timestamp("revoked_at"),
-});
-
 // Type exports for use in application code
 export type Family = typeof families.$inferSelect;
 export type NewFamily = typeof families.$inferInsert;
@@ -132,12 +98,3 @@ export type NewUsageLog = typeof usageLogs.$inferInsert;
 
 export type Insight = typeof insights.$inferSelect;
 export type NewInsight = typeof insights.$inferInsert;
-
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
-export type Device = typeof devices.$inferSelect;
-export type NewDevice = typeof devices.$inferInsert;
-
-export type RefreshToken = typeof refreshTokens.$inferSelect;
-export type NewRefreshToken = typeof refreshTokens.$inferInsert;

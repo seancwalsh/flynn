@@ -116,37 +116,6 @@ export async function setupTestDatabase(): Promise<void> {
       generated_at TIMESTAMP DEFAULT NOW() NOT NULL
     )
   `);
-
-  // Auth tables
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password_hash VARCHAR(255) NOT NULL,
-      role VARCHAR(50) NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW() NOT NULL
-    )
-  `);
-
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS devices (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      device_token VARCHAR(512) NOT NULL,
-      platform VARCHAR(20) NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW() NOT NULL
-    )
-  `);
-
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS refresh_tokens (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      token_hash VARCHAR(255) NOT NULL,
-      expires_at TIMESTAMP NOT NULL,
-      revoked_at TIMESTAMP
-    )
-  `);
 }
 
 /**
@@ -163,10 +132,6 @@ export async function cleanTestData(): Promise<void> {
   await db.execute(sql`TRUNCATE caregivers CASCADE`);
   await db.execute(sql`TRUNCATE children CASCADE`);
   await db.execute(sql`TRUNCATE families CASCADE`);
-  // Auth tables
-  await db.execute(sql`TRUNCATE refresh_tokens CASCADE`);
-  await db.execute(sql`TRUNCATE devices CASCADE`);
-  await db.execute(sql`TRUNCATE users CASCADE`);
 }
 
 /**
@@ -182,8 +147,4 @@ export async function teardownTestDatabase(): Promise<void> {
   await db.execute(sql`DROP TABLE IF EXISTS caregivers CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS children CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS families CASCADE`);
-  // Auth tables
-  await db.execute(sql`DROP TABLE IF EXISTS refresh_tokens CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS devices CASCADE`);
-  await db.execute(sql`DROP TABLE IF EXISTS users CASCADE`);
 }
