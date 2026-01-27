@@ -6,8 +6,10 @@ struct SettingsView: View {
     let onEditVocabulary: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.authService) private var authService
     @State private var showChangePassphrase = false
     @State private var showDeletePassphraseConfirmation = false
+    @State private var showLogoutConfirmation = false
 
     init(
         settings: Binding<AppSettings>,
@@ -22,6 +24,31 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Account section
+                if authService.isAuthenticated, let user = authService.currentUser {
+                    Section("Account") {
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.secondary)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(user.email)
+                                    .font(.system(size: 16, weight: .medium))
+                                Text(user.role.rawValue.capitalized)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        
+                        Button(role: .destructive) {
+                            showLogoutConfirmation = true
+                        } label: {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                    }
+                }
                 Section("Language") {
                     Picker("Language", selection: $settings.language) {
                         ForEach(Language.allCases, id: \.self) { language in
@@ -116,6 +143,21 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This will remove passphrase protection. Anyone will be able to edit the vocabulary.")
+            }
+            .confirmationDialog(
+                "Sign Out",
+                isPresented: $showLogoutConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Sign Out", role: .destructive) {
+                    Task {
+                        await authService.logout()
+                        dismiss()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Are you sure you want to sign out? Your local settings will be preserved.")
             }
         }
     }
