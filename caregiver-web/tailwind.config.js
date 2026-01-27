@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./app/**/*.{ts,tsx}"],
+  content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
@@ -17,6 +17,20 @@ export default {
           900: "#0c4a6e",
           950: "#082f49",
         },
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "pulse-subtle": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.6" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 0.2s ease-out",
+        "pulse-subtle": "pulse-subtle 1.5s ease-in-out infinite",
       },
     },
   },
