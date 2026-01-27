@@ -17,6 +17,14 @@ import { getProgressSummaryTool } from "./read/get_progress_summary";
 import { listGoalsTool } from "./read/list_goals";
 import { searchVocabularyTool } from "./read/search_vocabulary";
 
+// Write tools
+import { createSessionTool } from "./write/create_session";
+import { updateSessionTool } from "./write/update_session";
+import { createGoalTool } from "./write/create_goal";
+import { updateGoalTool } from "./write/update_goal";
+import { addNoteTool } from "./write/add_note";
+import { createCustomSymbolTool } from "./write/create_custom_symbol";
+
 // ============================================================================
 // Tool Lists
 // ============================================================================
@@ -37,15 +45,16 @@ export const readTools = [
 ] as const;
 
 /**
- * All write tools (future)
- * These tools modify data
+ * All write tools
+ * These tools modify data - the AI should confirm with the user before calling
  */
 export const writeTools = [
-  // TODO: Add write tools when implemented
-  // - add_session_note
-  // - create_goal
-  // - update_goal_progress
-  // - add_milestone
+  createSessionTool,
+  updateSessionTool,
+  createGoalTool,
+  updateGoalTool,
+  addNoteTool,
+  createCustomSymbolTool,
 ] as const;
 
 /**
@@ -75,13 +84,13 @@ export function registerReadTools(executor: ToolExecutor): void {
 /**
  * Register all write tools with a ToolExecutor instance
  */
-export function registerWriteTools(_executor: ToolExecutor): void {
-  // No write tools implemented yet
-  // for (const tool of writeTools) {
-  //   if (!executor.hasTool(tool.name)) {
-  //     executor.registerTool(tool);
-  //   }
-  // }
+export function registerWriteTools(executor: ToolExecutor): void {
+  for (const tool of writeTools) {
+    if (!executor.hasTool(tool.name)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      executor.registerTool(tool as any);
+    }
+  }
 }
 
 /**
@@ -106,7 +115,7 @@ export function initializeTools(): ToolExecutor {
 // Re-exports
 // ============================================================================
 
-// Export individual tools for direct access
+// Export individual read tools for direct access
 export { getChildTool } from "./read/get_child";
 export { listChildrenTool } from "./read/list_children";
 export { listSessionsTool } from "./read/list_sessions";
@@ -115,6 +124,14 @@ export { getAACUsageTool } from "./read/get_aac_usage";
 export { getProgressSummaryTool } from "./read/get_progress_summary";
 export { listGoalsTool } from "./read/list_goals";
 export { searchVocabularyTool } from "./read/search_vocabulary";
+
+// Export individual write tools for direct access
+export { createSessionTool } from "./write/create_session";
+export { updateSessionTool } from "./write/update_session";
+export { createGoalTool } from "./write/create_goal";
+export { updateGoalTool } from "./write/update_goal";
+export { addNoteTool } from "./write/add_note";
+export { createCustomSymbolTool } from "./write/create_custom_symbol";
 
 // Export error types
 export * from "./errors";
