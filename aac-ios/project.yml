@@ -1,0 +1,66 @@
+name: FlynnAAC
+options:
+  bundleIdPrefix: com.flynnapp
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  SWIFT_VERSION: "5.9"
+
+packages:
+  ClerkSDK:
+    url: https://github.com/clerk/clerk-ios
+    from: "0.50.0"
+
+targets:
+  FlynnAAC:
+    type: application
+    platform: iOS
+    sources:
+      - FlynnAAC
+    dependencies:
+      - package: ClerkSDK
+        product: ClerkSDK
+    info:
+      path: FlynnAAC/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations: {}
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.flynnapp.FlynnAAC
+      TARGETED_DEVICE_FAMILY: "1,2"
+      GENERATE_INFOPLIST_FILE: YES
+
+  FlynnAACTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - FlynnAACTests
+    dependencies:
+      - target: FlynnAAC
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.flynnapp.FlynnAACTests
+      GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  FlynnAAC:
+    build:
+      targets:
+        FlynnAAC: all
+        FlynnAACTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FlynnAACTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

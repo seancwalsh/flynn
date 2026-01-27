@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "description": "Symbol manifest for ElevenLabs audio generation",
+  "voiceSettings": {
+    "voiceId": "EXAVITQu4vr4xnSDxMaL",
+    "voiceName": "Bella",
+    "modelId": "eleven_multilingual_v2",
+    "stability": 0.5,
+    "similarityBoost": 0.75
+  },
+  "symbols": [
+    {
+      "id": "want",
+      "labels": {
+        "en": "want",
+        "bg": "искам"
+      }
+    },
+    {
+      "id": "more",
+      "labels": {
+        "en": "more",
+        "bg": "още"
+      }
+    },
+    {
+      "id": "help",
+      "labels": {
+        "en": "help",
+        "bg": "помощ"
+      }
+    },
+    {
+      "id": "stop",
+      "labels": {
+        "en": "stop",
+        "bg": "спри"
+      }
+    },
+    {
+      "id": "yes",
+      "labels": {
+        "en": "yes",
+        "bg": "да"
+      }
+    },
+    {
+      "id": "no",
+      "labels": {
+        "en": "no",
+        "bg": "не"
+      }
+    },
+    {
+      "id": "food",
+      "labels": {
+        "en": "food",
+        "bg": "храна"
+      }
+    },
+    {
+      "id": "apple",
+      "labels": {
+        "en": "apple",
+        "bg": "ябълка"
+      }
+    },
+    {
+      "id": "water",
+      "labels": {
+        "en": "water",
+        "bg": "вода"
+      }
+    },
+    {
+      "id": "milk",
+      "labels": {
+        "en": "milk",
+        "bg": "мляко"
+      }
+    }
+  ]
+}

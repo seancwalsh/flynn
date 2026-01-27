@@ -1,0 +1,136 @@
+{
+  "project": {
+    "name": "Flynn AAC",
+    "description": "Bilingual AAC app for Flynn with ARASAAC symbols and LAMP motor planning",
+    "platform": "iOS native (iPad-first, iPhone compatible)",
+    "languages": [
+      "Bulgarian",
+      "English"
+    ],
+    "architecture": "SwiftUI + MV",
+    "storage": "Core Data",
+    "audio": "AVFoundation"
+  },
+  "milestones": {
+    "M1": {
+      "name": "Core AAC",
+      "description": "Basic symbol grid, navigation, phrase building, TTS"
+    }
+  },
+  "requirements": [
+    {
+      "id": "FLY-4",
+      "category": "design",
+      "description": "Design system with warm, sensory-friendly visual foundation",
+      "steps": [
+        "Define color tokens for light/dark modes (warm, muted tones only)",
+        "Verify background uses subtle warm paper texture (cream/off-white)",
+        "Verify dark mode uses warm charcoal (not pure black)",
+        "Define LAMP category colors (muted sage green, dusty yellow, muted rose)",
+        "Define typography scale with Bulgarian Cyrillic support",
+        "Define spacing system (4px base unit)",
+        "Define animation specs (105% max scale, soft opacity transitions)",
+        "Create SwiftUI theme file with reusable view modifiers",
+        "Verify touch targets are >= 60x60 points",
+        "Document accessibility and sensory considerations"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-5",
+      "category": "functional",
+      "description": "Symbol tap plays audio within 100ms",
+      "steps": [
+        "Tap any symbol on the grid",
+        "Verify audio playback starts within 100ms",
+        "Verify visual feedback (scale/highlight) appears on tap",
+        "Verify audio plays in currently selected language",
+        "Test with device offline - audio should play from cache"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-6",
+      "category": "functional",
+      "description": "Phrase builder accumulates symbols and speaks complete phrase",
+      "steps": [
+        "Tap multiple symbols to add to phrase bar",
+        "Verify symbols appear left-to-right in order tapped",
+        "Tap speak button to play complete phrase",
+        "Tap clear button to remove all symbols",
+        "Tap individual symbol in phrase bar to remove it",
+        "Navigate categories - verify phrase bar persists"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-7",
+      "category": "functional",
+      "description": "Category navigation with consistent symbol positions (LAMP)",
+      "steps": [
+        "Tap category folder to open category grid",
+        "Verify navigation completes within 200ms",
+        "Verify back button is always in top-left",
+        "Navigate away and return - verify symbol positions unchanged",
+        "Close and reopen app - verify positions unchanged"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-8",
+      "category": "functional",
+      "description": "Language toggle switches labels and TTS without moving symbols",
+      "steps": [
+        "Tap language toggle in header",
+        "Verify all symbol labels switch to selected language",
+        "Tap a symbol and verify TTS plays in correct language",
+        "Verify symbol images remain identical",
+        "Verify symbol grid positions are 100% identical",
+        "Restart app - verify language setting persists"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-9",
+      "category": "functional",
+      "description": "Adjustable grid size with position preservation",
+      "steps": [
+        "Open settings and change grid from 4x4 to 5x5",
+        "Verify existing symbols keep their [row, col] positions",
+        "Verify new cells added to right and bottom edges",
+        "Attempt to contract grid with symbols in outer cells",
+        "Verify warning dialog appears",
+        "Verify touch targets are >= 60x60 points at all sizes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-10",
+      "category": "infrastructure",
+      "description": "Full offline functionality for core AAC",
+      "steps": [
+        "Enable airplane mode",
+        "Launch app and verify all symbols display",
+        "Tap symbols and verify audio plays",
+        "Build and speak phrases",
+        "Verify no error messages appear",
+        "Re-enable network and verify usage logs sync"
+      ],
+      "passes": true
+    },
+    {
+      "id": "FLY-11",
+      "category": "functional",
+      "description": "Visual and audio feedback system",
+      "steps": [
+        "Tap symbol and verify scale animation (105% then return)",
+        "Verify highlight overlay appears on tap",
+        "Tap symbol and verify it animates into phrase bar",
+        "Tap speak button and verify visual pulse while playing",
+        "Tap rapidly and verify animations don't block input",
+        "Disable animations in settings and verify static feedback"
+      ],
+      "passes": true
+    }
+  ]
+}
