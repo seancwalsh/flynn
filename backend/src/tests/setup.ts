@@ -51,6 +51,26 @@ export async function setupTestDatabase(): Promise<void> {
   
   // Create tables using raw SQL (in production, use migrations)
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      clerk_id VARCHAR(255) UNIQUE,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      role VARCHAR(50) NOT NULL DEFAULT 'caregiver',
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS devices (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      device_token VARCHAR(255) NOT NULL,
+      platform VARCHAR(20) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS families (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(255) NOT NULL,
@@ -125,6 +145,9 @@ export async function cleanTestData(): Promise<void> {
   const db = getTestDb();
   
   // Delete in reverse order of dependencies
+  // Safely handle tables that may not exist
+  await db.execute(sql`TRUNCATE conversation_messages CASCADE`).catch(() => {});
+  await db.execute(sql`TRUNCATE conversations CASCADE`).catch(() => {});
   await db.execute(sql`TRUNCATE insights CASCADE`);
   await db.execute(sql`TRUNCATE usage_logs CASCADE`);
   await db.execute(sql`TRUNCATE therapist_clients CASCADE`);
@@ -132,6 +155,8 @@ export async function cleanTestData(): Promise<void> {
   await db.execute(sql`TRUNCATE caregivers CASCADE`);
   await db.execute(sql`TRUNCATE children CASCADE`);
   await db.execute(sql`TRUNCATE families CASCADE`);
+  await db.execute(sql`TRUNCATE devices CASCADE`).catch(() => {});
+  await db.execute(sql`TRUNCATE users CASCADE`).catch(() => {});
 }
 
 /**
@@ -140,6 +165,8 @@ export async function cleanTestData(): Promise<void> {
 export async function teardownTestDatabase(): Promise<void> {
   const db = getTestDb();
   
+  await db.execute(sql`DROP TABLE IF EXISTS conversation_messages CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS conversations CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS insights CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS usage_logs CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS therapist_clients CASCADE`);
@@ -147,4 +174,6 @@ export async function teardownTestDatabase(): Promise<void> {
   await db.execute(sql`DROP TABLE IF EXISTS caregivers CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS children CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS families CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS devices CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS users CASCADE`);
 }

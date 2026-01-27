@@ -25,6 +25,7 @@
     "setup": "bun install && docker compose up -d && sleep 3 && bun run db:migrate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@hono/zod-validator": "^0.7.6",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",

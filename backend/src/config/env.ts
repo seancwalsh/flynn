@@ -6,6 +6,9 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default("postgres://postgres:postgres@localhost:5434/flynn_aac"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  
+  // Anthropic API
+  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
