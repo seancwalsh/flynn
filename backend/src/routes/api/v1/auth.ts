@@ -11,7 +11,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
 import { AppError } from "../../../middleware/error-handler";
-import { authRateLimiter, clearRateLimitStore } from "../../../middleware/rate-limiter";
+import { authRateLimiter } from "../../../middleware/rate-limiter";
 import { requireAuth } from "../../../middleware/auth";
 import {
   createUser,

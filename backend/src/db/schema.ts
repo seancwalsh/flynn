@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, date, jsonb, primaryKey, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, date, jsonb, primaryKey } from "drizzle-orm/pg-core";
 
 // Families - the primary organizational unit
 export const families = pgTable("families", {

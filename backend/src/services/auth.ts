@@ -5,10 +5,10 @@
  */
 
 import bcrypt from "bcrypt";
-import { sign, verify, type JWTPayload } from "hono/jwt";
+import { sign, verify } from "hono/jwt";
 import { env } from "../config/env";
 import { db } from "../db";
-import { users, refreshTokens, devices, type User, type NewUser } from "../db/schema";
+import { users, refreshTokens, devices, type User } from "../db/schema";
 import { eq, and, isNull, gt } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 
@@ -21,8 +21,8 @@ function parseDuration(duration: string): number {
   if (!match) {
     throw new Error(`Invalid duration format: ${duration}`);
   }
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
+  const value = parseInt(match[1]!, 10);
+  const unit = match[2]!;
   
   switch (unit) {
     case "s": return value * 1000;
@@ -34,11 +34,14 @@ function parseDuration(duration: string): number {
 }
 
 // JWT payload type
-export interface TokenPayload extends JWTPayload {
+export interface TokenPayload {
   sub: string;      // user id
   email: string;
   role: string;
   type: "access" | "refresh";
+  exp: number;
+  iat: number;
+  [key: string]: unknown;
 }
 
 export interface AuthTokens {
@@ -82,11 +85,11 @@ export async function generateAccessToken(user: User): Promise<string> {
   const expiresInMs = parseDuration(env.JWT_EXPIRES_IN);
   const exp = Math.floor((Date.now() + expiresInMs) / 1000);
   
-  const payload: TokenPayload = {
+  const payload = {
     sub: user.id,
     email: user.email,
     role: user.role,
-    type: "access",
+    type: "access" as const,
     exp,
     iat: Math.floor(Date.now() / 1000),
   };
@@ -135,13 +138,33 @@ export async function generateAuthTokens(user: User): Promise<AuthTokens> {
  */
 export async function verifyAccessToken(token: string): Promise<TokenPayload | null> {
   try {
-    const payload = await verify(token, env.JWT_SECRET) as TokenPayload;
+    const payload = await verify(token, env.JWT_SECRET, "HS256");
     
-    if (payload.type !== "access") {
+    // Validate payload shape
+    const sub = payload["sub"];
+    const email = payload["email"];
+    const role = payload["role"];
+    const type = payload["type"];
+    const exp = payload["exp"];
+    const iat = payload["iat"];
+    
+    if (
+      typeof sub !== "string" ||
+      typeof email !== "string" ||
+      typeof role !== "string" ||
+      type !== "access"
+    ) {
       return null;
     }
     
-    return payload;
+    return {
+      sub,
+      email,
+      role,
+      type,
+      exp: typeof exp === "number" ? exp : 0,
+      iat: typeof iat === "number" ? iat : 0,
+    };
   } catch {
     return null;
   }
@@ -247,6 +270,10 @@ export async function createUser(
     })
     .returning();
   
+  if (!user) {
+    throw new Error("Failed to create user");
+  }
+  
   return user;
 }
 
@@ -269,11 +296,12 @@ export async function registerDevice(
       )
     );
   
-  if (existing.length > 0) {
+  const existingDevice = existing[0];
+  if (existingDevice) {
     return {
-      id: existing[0].id,
-      deviceToken: existing[0].deviceToken,
-      platform: existing[0].platform,
+      id: existingDevice.id,
+      deviceToken: existingDevice.deviceToken,
+      platform: existingDevice.platform,
     };
   }
   
@@ -285,6 +313,10 @@ export async function registerDevice(
       platform,
     })
     .returning();
+  
+  if (!device) {
+    throw new Error("Failed to register device");
+  }
   
   return {
     id: device.id,

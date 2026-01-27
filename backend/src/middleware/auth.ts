@@ -6,7 +6,7 @@
 
 import type { Context, Next, MiddlewareHandler } from "hono";
 import { AppError } from "./error-handler";
-import { verifyAccessToken, findUserById, type TokenPayload } from "../services/auth";
+import { verifyAccessToken, findUserById } from "../services/auth";
 
 // Extend Hono's context to include user info
 declare module "hono" {
@@ -31,11 +31,13 @@ export function requireAuth(): MiddlewareHandler {
     }
     
     const parts = authHeader.split(" ");
-    if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer") {
+    const scheme = parts[0];
+    const token = parts[1];
+    
+    if (parts.length !== 2 || !scheme || scheme.toLowerCase() !== "bearer" || !token) {
       throw new AppError("Invalid authorization format. Use: Bearer <token>", 401, "INVALID_AUTH_FORMAT");
     }
     
-    const token = parts[1];
     const payload = await verifyAccessToken(token);
     
     if (!payload) {
@@ -92,8 +94,10 @@ export function optionalAuth(): MiddlewareHandler {
     
     if (authHeader) {
       const parts = authHeader.split(" ");
-      if (parts.length === 2 && parts[0].toLowerCase() === "bearer") {
-        const token = parts[1];
+      const scheme = parts[0];
+      const token = parts[1];
+      
+      if (parts.length === 2 && scheme && scheme.toLowerCase() === "bearer" && token) {
         const payload = await verifyAccessToken(token);
         
         if (payload) {
