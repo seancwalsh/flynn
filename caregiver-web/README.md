@@ -71,6 +71,90 @@ app/
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run typecheck` - Run TypeScript checks
+- `npm run test` - Run unit tests (Vitest)
+- `npm run test:e2e` - Run E2E tests (Playwright)
+- `npm run test:e2e:ui` - Open Playwright UI mode
+- `npm run test:e2e:headed` - Run E2E tests with browser visible
+- `npm run test:e2e:debug` - Debug E2E tests
+- `npm run test:e2e:report` - View last E2E test report
+
+## Testing
+
+### Unit Tests (Vitest)
+
+Unit tests are located alongside components with `.test.tsx` extension.
+
+```bash
+# Run unit tests in watch mode
+npm run test
+
+# Run once
+npm run test:run
+
+# With coverage
+npm run test:coverage
+```
+
+### E2E Tests (Playwright)
+
+End-to-end tests are in the `e2e/` directory and test the full chat flow.
+
+```bash
+# Install browsers (first time only)
+npx playwright install chromium
+
+# Run all E2E tests
+npm run test:e2e
+
+# Open interactive UI mode
+npm run test:e2e:ui
+
+# Run with browser visible
+npm run test:e2e:headed
+
+# Run specific test file
+npx playwright test chat.spec.ts
+
+# Debug tests
+npm run test:e2e:debug
+
+# View test report
+npm run test:e2e:report
+```
+
+#### E2E Test Structure
+
+```
+e2e/
+├── auth.setup.ts           # Authentication setup
+├── chat.spec.ts            # Chat flow tests
+└── fixtures/
+    ├── chat-page.ts        # Page Object Model
+    └── test-data.ts        # Mock data
+```
+
+#### Test Coverage
+
+The E2E tests cover:
+- **Navigation:** Login → Dashboard → Chat
+- **Conversations:** Create, select, switch, delete
+- **Messaging:** Send messages, streaming responses, keyboard shortcuts
+- **Tool Calls:** Loading states, result display
+- **Error States:** Network errors, API errors, dismissal
+- **Mobile:** Responsive layout, mobile sidebar
+
+#### Running in CI
+
+The tests are configured to run in CI with:
+- Single worker for stability
+- Retries on failure
+- Trace/video capture on retry
+- HTML report generation
+
+```bash
+# CI mode
+CI=true npm run test:e2e
+```
 
 ## Features
 

@@ -184,6 +184,7 @@ export function MessageBubble({
       )}
       role="article"
       aria-label={`${message.role} message`}
+      data-testid={`message-${message.role}`}
     >
       <div
         className={cn(

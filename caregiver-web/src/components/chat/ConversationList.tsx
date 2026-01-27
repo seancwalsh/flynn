@@ -56,7 +56,7 @@ function ConversationItem({
   };
 
   return (
-    <div className="group relative" ref={menuRef}>
+    <div className="group relative" ref={menuRef} data-testid="conversation-item">
       <button
         onClick={() => onSelect(conversation.id)}
         className={cn(
@@ -67,6 +67,7 @@ function ConversationItem({
         )}
         aria-selected={isSelected}
         role="option"
+        data-testid={`conversation-${conversation.id}`}
       >
         <MessageSquare
           className={cn(
