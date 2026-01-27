@@ -1,5 +1,8 @@
 import { pgTable, uuid, varchar, timestamp, date, jsonb, primaryKey } from "drizzle-orm/pg-core";
 
+// Re-export chat schema for convenience
+export * from "./schema/chat";
+
 // Families - the primary organizational unit
 export const families = pgTable("families", {
   id: uuid("id").primaryKey().defaultRandom(),

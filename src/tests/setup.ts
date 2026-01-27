@@ -125,6 +125,17 @@ export async function cleanTestData(): Promise<void> {
   const db = getTestDb();
   
   // Delete in reverse order of dependencies
+  // Note: messages and conversations may not exist in all test contexts
+  try {
+    await db.execute(sql`TRUNCATE messages CASCADE`);
+  } catch {
+    // Table may not exist
+  }
+  try {
+    await db.execute(sql`TRUNCATE conversations CASCADE`);
+  } catch {
+    // Table may not exist
+  }
   await db.execute(sql`TRUNCATE insights CASCADE`);
   await db.execute(sql`TRUNCATE usage_logs CASCADE`);
   await db.execute(sql`TRUNCATE therapist_clients CASCADE`);
@@ -140,6 +151,9 @@ export async function cleanTestData(): Promise<void> {
 export async function teardownTestDatabase(): Promise<void> {
   const db = getTestDb();
   
+  // Drop chat tables first (they may reference children)
+  await db.execute(sql`DROP TABLE IF EXISTS messages CASCADE`);
+  await db.execute(sql`DROP TABLE IF EXISTS conversations CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS insights CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS usage_logs CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS therapist_clients CASCADE`);
