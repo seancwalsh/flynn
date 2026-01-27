@@ -21,6 +21,8 @@ struct PhraseItem: Identifiable {
 struct ContentView: View {
     @StateObject private var viewModel = AACViewModel()
     @State private var showSettings = false
+    @State private var showPassphrasePrompt = false
+    @State private var showPassphraseSetup = false
 
     var body: some View {
         ZStack {
@@ -40,36 +42,74 @@ struct ContentView: View {
                 // Floating header with glass effect
                 HeaderView(
                     currentLanguage: viewModel.currentLanguage,
+                    hasPassphrase: KeychainHelper.hasPassphrase(),
                     onLanguageToggle: {
                         viewModel.toggleLanguage()
                     },
                     onSettingsTapped: {
                         showSettings = true
+                    },
+                    onLockTapped: {
+                        // Quick access to edit mode via lock icon
+                        if KeychainHelper.hasPassphrase() {
+                            showPassphrasePrompt = true
+                        } else {
+                            showPassphraseSetup = true
+                        }
                     }
                 )
 
-                // Phrase bar with glass effect
-                PhraseBarView(
-                    phraseItems: viewModel.phraseItems,
-                    language: viewModel.currentLanguage,
-                    isGeneratingAudio: viewModel.isGeneratingPhraseAudio,
-                    onSpeak: {
-                        viewModel.speakPhrase()
-                    },
-                    onClear: {
-                        viewModel.clearPhrase()
-                    },
-                    onRemoveSymbol: { index in
-                        viewModel.removeSymbol(at: index)
-                    }
-                )
-                .padding(.horizontal, FlynnTheme.Layout.spacing12)
-                .padding(.bottom, FlynnTheme.Layout.spacing8)
+                // Edit mode banner (when active)
+                if viewModel.isEditMode {
+                    EditModeBanner(
+                        hiddenCount: viewModel.hiddenItems.hiddenCount(
+                            symbolIds: currentSymbolIds,
+                            categoryIds: currentCategoryIds
+                        ),
+                        onShowAll: {
+                            viewModel.showAllInCurrentView(
+                                symbolIds: currentSymbolIds,
+                                categoryIds: currentCategoryIds
+                            )
+                        },
+                        onHideAll: {
+                            viewModel.hideAllInCurrentView(
+                                symbolIds: currentSymbolIds,
+                                categoryIds: currentCategoryIds
+                            )
+                        },
+                        onDone: {
+                            viewModel.exitEditMode()
+                        }
+                    )
+                }
+
+                // Phrase bar with glass effect (hidden in edit mode to give more space)
+                if !viewModel.isEditMode {
+                    PhraseBarView(
+                        phraseItems: viewModel.phraseItems,
+                        language: viewModel.currentLanguage,
+                        isGeneratingAudio: viewModel.isGeneratingPhraseAudio,
+                        onSpeak: {
+                            viewModel.speakPhrase()
+                        },
+                        onClear: {
+                            viewModel.clearPhrase()
+                        },
+                        onRemoveSymbol: { index in
+                            viewModel.removeSymbol(at: index)
+                        }
+                    )
+                    .padding(.horizontal, FlynnTheme.Layout.spacing12)
+                    .padding(.bottom, FlynnTheme.Layout.spacing8)
+                }
 
                 // Symbol grid
                 SymbolGridView(
                     category: viewModel.currentCategory,
                     language: viewModel.currentLanguage,
+                    isEditMode: viewModel.isEditMode,
+                    hiddenItems: viewModel.hiddenItems,
                     onSymbolTapped: { symbol in
                         viewModel.symbolTapped(symbol)
                     },
@@ -81,20 +121,84 @@ struct ContentView: View {
                     },
                     onBackTapped: {
                         viewModel.navigateBack()
+                    },
+                    onToggleSymbolVisibility: { symbolId in
+                        viewModel.toggleSymbolVisibility(symbolId)
+                    },
+                    onToggleCategoryVisibility: { categoryId in
+                        viewModel.toggleCategoryVisibility(categoryId)
+                    }
+                )
+            }
+
+            // Passphrase prompt overlay
+            if showPassphrasePrompt {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showPassphrasePrompt = false
+                    }
+
+                PassphrasePromptView(
+                    onAuthenticated: {
+                        showPassphrasePrompt = false
+                        viewModel.isEditMode = true
+                    },
+                    onCancel: {
+                        showPassphrasePrompt = false
                     }
                 )
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(settings: $viewModel.settings)
+            SettingsView(
+                settings: $viewModel.settings,
+                hiddenItems: viewModel.hiddenItems,
+                onEditVocabulary: {
+                    showSettings = false
+                    if KeychainHelper.hasPassphrase() {
+                        showPassphrasePrompt = true
+                    } else {
+                        showPassphraseSetup = true
+                    }
+                }
+            )
         }
+        .sheet(isPresented: $showPassphraseSetup) {
+            PassphraseSetupView(
+                onComplete: {
+                    showPassphraseSetup = false
+                    viewModel.isEditMode = true
+                },
+                onCancel: {
+                    showPassphraseSetup = false
+                }
+            )
+        }
+    }
+
+    // Helper to get current symbol/category IDs for bulk operations
+    private var currentSymbolIds: [String] {
+        if let category = viewModel.currentCategory {
+            return category.symbols.map { $0.id }
+        }
+        return VocabularyStructure.coreWords.map { $0.id }
+    }
+
+    private var currentCategoryIds: [String] {
+        if viewModel.currentCategory == nil {
+            return VocabularyStructure.categoryFolders.map { $0.id }
+        }
+        return []
     }
 }
 
 struct HeaderView: View {
     let currentLanguage: Language
+    let hasPassphrase: Bool
     let onLanguageToggle: () -> Void
     let onSettingsTapped: () -> Void
+    let onLockTapped: () -> Void
 
     var body: some View {
         HStack {
@@ -128,6 +232,23 @@ struct HeaderView: View {
             Spacer()
 
             HStack(spacing: FlynnTheme.Layout.spacing8) {
+                // Lock button for quick edit mode access (only shown if passphrase is set)
+                if hasPassphrase {
+                    GlassEffectContainer {
+                        Button(action: {}) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .padding(FlynnTheme.Layout.spacing8)
+                                .glassEffect(.regular.interactive(), in: .circle)
+                        }
+                        .buttonStyle(.plain)
+                        .onLongPressGesture(minimumDuration: 0.5) {
+                            onLockTapped()
+                        }
+                    }
+                }
+
                 // Settings button
                 GlassEffectContainer {
                     Button(action: onSettingsTapped) {
@@ -172,6 +293,10 @@ class AACViewModel: ObservableObject {
     @Published var phraseItems: [PhraseItem] = []
     @Published var currentCategory: Category?
     @Published var isGeneratingPhraseAudio: Bool = false
+
+    // Edit mode state for hide card feature
+    @Published var isEditMode: Bool = false
+    @Published var hiddenItems: HiddenItemsStore = .load()
 
     private let audioService: AudioService
     private let phraseEngine: PhraseEngine
@@ -312,6 +437,48 @@ class AACViewModel: ObservableObject {
         // Navigate back to root (nil) for now
         // TODO: Implement proper category hierarchy tracking for FLY-7
         currentCategory = nil
+    }
+
+    // MARK: - Edit Mode (Hide Card Feature)
+
+    /// Attempts to enter edit mode with the given passphrase.
+    /// Returns true if authentication succeeded.
+    func enterEditMode(passphrase: String) -> Bool {
+        guard KeychainHelper.verifyPassphrase(passphrase) else {
+            return false
+        }
+        isEditMode = true
+        return true
+    }
+
+    /// Exits edit mode and persists hidden items.
+    func exitEditMode() {
+        isEditMode = false
+        hiddenItems.save()
+    }
+
+    /// Toggles the visibility of a symbol.
+    func toggleSymbolVisibility(_ symbolId: String) {
+        hiddenItems.toggleSymbol(symbolId)
+        hiddenItems.save()
+    }
+
+    /// Toggles the visibility of a category.
+    func toggleCategoryVisibility(_ categoryId: String) {
+        hiddenItems.toggleCategory(categoryId)
+        hiddenItems.save()
+    }
+
+    /// Shows all items in the current view.
+    func showAllInCurrentView(symbolIds: [String], categoryIds: [String]) {
+        hiddenItems.showAll(symbolIds: symbolIds, categoryIds: categoryIds)
+        hiddenItems.save()
+    }
+
+    /// Hides all items in the current view.
+    func hideAllInCurrentView(symbolIds: [String], categoryIds: [String]) {
+        hiddenItems.hideAll(symbolIds: symbolIds, categoryIds: categoryIds)
+        hiddenItems.save()
     }
 }
 

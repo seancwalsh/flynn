@@ -23,10 +23,14 @@ enum GridItemType: Identifiable {
 struct SymbolGridView: View {
     let category: Category?
     let language: Language
+    let isEditMode: Bool
+    let hiddenItems: HiddenItemsStore
     let onSymbolTapped: (Symbol) -> Void
     let onSymbolWithLabelTapped: ((Symbol, String) -> Void)?  // For conjugated verbs
     let onCategoryTapped: (Category) -> Void
     let onBackTapped: () -> Void
+    let onToggleSymbolVisibility: ((String) -> Void)?
+    let onToggleCategoryVisibility: ((String) -> Void)?
 
     @State private var settings = AppSettings.default
     @State private var gridItems: [GridItemType] = []
@@ -42,17 +46,25 @@ struct SymbolGridView: View {
     init(
         category: Category?,
         language: Language,
+        isEditMode: Bool = false,
+        hiddenItems: HiddenItemsStore = HiddenItemsStore(),
         onSymbolTapped: @escaping (Symbol) -> Void,
         onSymbolWithLabelTapped: ((Symbol, String) -> Void)? = nil,
         onCategoryTapped: @escaping (Category) -> Void,
-        onBackTapped: @escaping () -> Void
+        onBackTapped: @escaping () -> Void,
+        onToggleSymbolVisibility: ((String) -> Void)? = nil,
+        onToggleCategoryVisibility: ((String) -> Void)? = nil
     ) {
         self.category = category
         self.language = language
+        self.isEditMode = isEditMode
+        self.hiddenItems = hiddenItems
         self.onSymbolTapped = onSymbolTapped
         self.onSymbolWithLabelTapped = onSymbolWithLabelTapped
         self.onCategoryTapped = onCategoryTapped
         self.onBackTapped = onBackTapped
+        self.onToggleSymbolVisibility = onToggleSymbolVisibility
+        self.onToggleCategoryVisibility = onToggleCategoryVisibility
     }
 
     private var columns: [GridItem] {
@@ -215,22 +227,101 @@ struct SymbolGridView: View {
         } else if let item = gridItems.first(where: { $0.position.row == row && $0.position.col == col }) {
             switch item {
             case .symbol(let symbol):
-                SymbolCell(
-                    symbol: symbol,
-                    language: language,
-                    onTap: { handleSymbolTap(symbol) },
-                    onLongPress: { handleSymbolLongPress(symbol) }
-                )
+                symbolCellView(symbol: symbol)
             case .category(let cat):
-                CategoryCell(
-                    category: cat,
-                    language: language,
-                    onTap: { onCategoryTapped(cat) }
-                )
+                categoryCellView(category: cat)
             }
         } else {
             // Empty cell placeholder
             Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private func symbolCellView(symbol: Symbol) -> some View {
+        let isHidden = hiddenItems.isHidden(symbolId: symbol.id)
+
+        if isHidden && !isEditMode {
+            // Invisible placeholder - preserves layout, no interaction
+            Color.clear
+                .allowsHitTesting(false)
+        } else if isHidden && isEditMode {
+            // Ghost cell - tap to show
+            GhostSymbolCell(
+                symbol: symbol,
+                language: language,
+                onTap: {
+                    onToggleSymbolVisibility?(symbol.id)
+                }
+            )
+        } else if !isHidden && isEditMode {
+            // Normal cell with edit overlay - tap to hide
+            SymbolCell(
+                symbol: symbol,
+                language: language,
+                onTap: {
+                    onToggleSymbolVisibility?(symbol.id)
+                },
+                onLongPress: nil
+            )
+            .overlay(alignment: .topTrailing) {
+                // Checkmark badge indicating item is visible
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(FlynnTheme.Colors.success)
+                    .padding(FlynnTheme.Layout.spacing6)
+            }
+        } else {
+            // Normal cell - tap to speak
+            SymbolCell(
+                symbol: symbol,
+                language: language,
+                onTap: { handleSymbolTap(symbol) },
+                onLongPress: { handleSymbolLongPress(symbol) }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func categoryCellView(category cat: Category) -> some View {
+        let isHidden = hiddenItems.isHidden(categoryId: cat.id)
+
+        if isHidden && !isEditMode {
+            // Invisible placeholder - preserves layout, no interaction
+            Color.clear
+                .allowsHitTesting(false)
+        } else if isHidden && isEditMode {
+            // Ghost cell - tap to show
+            GhostCategoryCell(
+                category: cat,
+                language: language,
+                onTap: {
+                    onToggleCategoryVisibility?(cat.id)
+                }
+            )
+        } else if !isHidden && isEditMode {
+            // Normal cell with edit overlay - tap to hide
+            CategoryCell(
+                category: cat,
+                language: language,
+                onTap: {
+                    onToggleCategoryVisibility?(cat.id)
+                }
+            )
+            .overlay(alignment: .topTrailing) {
+                // Checkmark badge indicating item is visible
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(FlynnTheme.Colors.success)
+                    .padding(FlynnTheme.Layout.spacing6)
+            }
+        } else {
+            // Normal cell - tap to navigate
+            CategoryCell(
+                category: cat,
+                language: language,
+                onTap: { onCategoryTapped(cat) }
+            )
         }
     }
 

@@ -10,6 +10,13 @@
 		FE4125D9D5E247FB8F43EC27 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EA0390B09D0A451B94EF8D0F /* Assets.xcassets */; };
 		A1B2C3D4E5F60001 /* Audio in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002 /* Audio */; };
 		A1B2C3D4E5F60003 /* symbol_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60004 /* symbol_manifest.json */; };
+		HIDEC001 /* HiddenItemsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = HIDEC002 /* HiddenItemsStore.swift */; };
+		KEYCHAIN001 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = KEYCHAIN002 /* KeychainHelper.swift */; };
+		GHOST001 /* GhostSymbolCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = GHOST002 /* GhostSymbolCell.swift */; };
+		GHOST003 /* GhostCategoryCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = GHOST004 /* GhostCategoryCell.swift */; };
+		PASSPHRASE001 /* PassphrasePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PASSPHRASE002 /* PassphrasePromptView.swift */; };
+		PASSPHRASE003 /* PassphraseSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PASSPHRASE004 /* PassphraseSetupView.swift */; };
+		EDITBANNER001 /* EditModeBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDITBANNER002 /* EditModeBanner.swift */; };
 		E11AB5001 /* ElevenLabsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5002 /* ElevenLabsService.swift */; };
 		E11AB5003 /* PhraseCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5004 /* PhraseCacheService.swift */; };
 		E11AB5005 /* APIKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11AB5006 /* APIKeys.swift */; };
@@ -60,6 +67,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		HIDEC002 /* HiddenItemsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenItemsStore.swift; sourceTree = "<group>"; };
+		KEYCHAIN002 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		GHOST002 /* GhostSymbolCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostSymbolCell.swift; sourceTree = "<group>"; };
+		GHOST004 /* GhostCategoryCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostCategoryCell.swift; sourceTree = "<group>"; };
+		PASSPHRASE002 /* PassphrasePromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassphrasePromptView.swift; sourceTree = "<group>"; };
+		PASSPHRASE004 /* PassphraseSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassphraseSetupView.swift; sourceTree = "<group>"; };
+		EDITBANNER002 /* EditModeBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditModeBanner.swift; sourceTree = "<group>"; };
 		E11AB5002 /* ElevenLabsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsService.swift; sourceTree = "<group>"; };
 		E11AB5004 /* PhraseCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseCacheService.swift; sourceTree = "<group>"; };
 		E11AB5006 /* APIKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeys.swift; sourceTree = "<group>"; };
@@ -159,6 +173,7 @@
 				8E28610482EE12E442F5155D /* AppSettings.swift */,
 				49ACF74049F69CCA2E1B7236 /* Category.swift */,
 				7044ECE1E93FB8DE84B570DD /* GridPosition.swift */,
+				HIDEC002 /* HiddenItemsStore.swift */,
 				7CE0D9DF26F9F19AFDEE8309 /* Language.swift */,
 				E0BBB2340B4B5152BAA04BD8 /* Phrase.swift */,
 				D7153EFE8495A89332DDC456 /* Symbol.swift */,
@@ -191,11 +206,24 @@
 		7E40128767D107650B6B31E3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				CAREGIVER001 /* Caregiver */,
 				62AEEF7057B1F93F18E65150 /* PhraseBar */,
 				D9369C9E6A9A7CCB892064B8 /* Settings */,
 				8F629AC39ED23FC76F6586C7 /* SymbolGrid */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		CAREGIVER001 /* Caregiver */ = {
+			isa = PBXGroup;
+			children = (
+				EDITBANNER002 /* EditModeBanner.swift */,
+				GHOST004 /* GhostCategoryCell.swift */,
+				GHOST002 /* GhostSymbolCell.swift */,
+				PASSPHRASE002 /* PassphrasePromptView.swift */,
+				PASSPHRASE004 /* PassphraseSetupView.swift */,
+			);
+			path = Caregiver;
 			sourceTree = "<group>";
 		};
 		8371FFAD36C7A2035FA32BCF /* Products */ = {
@@ -213,6 +241,7 @@
 				E11AB5009 /* ARASAACService.swift */,
 				CE5AB088E03556D1DADAF2A1 /* AudioService.swift */,
 				E11AB5002 /* ElevenLabsService.swift */,
+				KEYCHAIN002 /* KeychainHelper.swift */,
 				E11AB5004 /* PhraseCacheService.swift */,
 				A7528BC2F72263B6A7703043 /* PhraseEngine.swift */,
 				RAPIDTAP002 /* RapidTapDetector.swift */,
@@ -386,14 +415,21 @@
 				47FA15A734637C186FEACC84 /* AppSettings.swift in Sources */,
 				6B6781A4814229F866754D62 /* AudioService.swift in Sources */,
 				EC56E2EAF0574FCE00B82B0C /* Category.swift in Sources */,
+				EDITBANNER001 /* EditModeBanner.swift in Sources */,
 				E11AB5001 /* ElevenLabsService.swift in Sources */,
 				3DFAF51D90BDEEA042D2DA49 /* CategoryCell.swift in Sources */,
 				CONJPICK002 /* ConjugationPickerView.swift in Sources */,
 				51ED98A14A60D0FC8E21FAA4 /* ContentView.swift in Sources */,
 				6EF8C8CC8B449D7128FD2D78 /* FlynnAACApp.swift in Sources */,
 				355BA1EBF8C67ABF28A23889 /* FlynnTheme.swift in Sources */,
+				GHOST003 /* GhostCategoryCell.swift in Sources */,
+				GHOST001 /* GhostSymbolCell.swift in Sources */,
 				047E088E97798017E17CD2CD /* GridPosition.swift in Sources */,
+				HIDEC001 /* HiddenItemsStore.swift in Sources */,
+				KEYCHAIN001 /* KeychainHelper.swift in Sources */,
 				0308A8E24478DABBAAF515D5 /* Language.swift in Sources */,
+				PASSPHRASE001 /* PassphrasePromptView.swift in Sources */,
+				PASSPHRASE003 /* PassphraseSetupView.swift in Sources */,
 				4655DC5187B8D1F5E7BC95C6 /* Phrase.swift in Sources */,
 				CB70FB7B0B0661A14B563005 /* PhraseBarView.swift in Sources */,
 				E11AB5003 /* PhraseCacheService.swift in Sources */,
