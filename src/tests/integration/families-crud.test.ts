@@ -28,8 +28,6 @@ async function jsonRequest(
 
 describe("Families CRUD API", () => {
   beforeAll(async () => {
-    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 
-      "postgres://postgres:postgres@localhost:5433/flynn_aac_test";
     await setupTestDatabase();
   });
 
