@@ -6,6 +6,10 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default("postgres://postgres:postgres@localhost:5432/flynn_aac"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  // JWT Authentication
+  JWT_SECRET: z.string().default("dev-secret-change-in-production-!!"),
+  JWT_EXPIRES_IN: z.string().default("15m"), // Short-lived access tokens
+  REFRESH_TOKEN_EXPIRES_IN: z.string().default("30d"),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import * as Sentry from "@sentry/node";
 import { env } from "../config/env";
 
 export class AppError extends Error {
@@ -22,6 +23,20 @@ export function errorHandler(err: Error, c: Context): Response {
   // Log error in non-test environments
   if (env.NODE_ENV !== "test") {
     console.error("Error:", err);
+  }
+
+  // Capture to Sentry (skip 4xx client errors and test environment)
+  const isClientError = 
+    (err instanceof HTTPException && err.status < 500) ||
+    (err instanceof AppError && err.statusCode < 500);
+  
+  if (!isClientError && env.NODE_ENV !== "test") {
+    Sentry.captureException(err, {
+      extra: {
+        path: c.req.path,
+        method: c.req.method,
+      },
+    });
   }
 
   // Handle known HTTP exceptions

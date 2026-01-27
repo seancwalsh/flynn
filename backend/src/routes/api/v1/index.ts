@@ -5,8 +5,12 @@ import { caregiversRoutes } from "./caregivers";
 import { therapistsRoutes } from "./therapists";
 import { usageLogsRoutes } from "./usage-logs";
 import { insightsRoutes } from "./insights";
+import { authRoutes } from "./auth";
 
 export const apiV1Routes = new Hono();
+
+// Mount auth routes (public endpoints)
+apiV1Routes.route("/auth", authRoutes);
 
 // Mount all resource routes
 apiV1Routes.route("/families", familiesRoutes);
