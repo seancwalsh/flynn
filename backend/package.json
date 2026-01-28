@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@clerk/backend": "^2.29.5",
     "@hono/zod-validator": "^0.7.6",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",
