@@ -1,8 +1,7 @@
 /**
  * Session Tools Tests (list_sessions and get_session)
  * 
- * These tools currently return mock data since the sessions table
- * doesn't exist yet. Tests verify the interface and authorization.
+ * Tests for therapy session listing and retrieval.
  */
 
 import { describe, test, expect, beforeEach, afterAll } from "bun:test";
@@ -19,6 +18,7 @@ import {
   createTestFamily, 
   createTestChild, 
   createTestCaregiver,
+  createTestSession,
 } from "../../fixtures";
 
 // ============================================================================
@@ -103,10 +103,14 @@ describe("list_sessions tool", () => {
   });
 
   describe("filtering", () => {
-    test("returns mock sessions (currently)", async () => {
+    test("returns sessions from database", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      // Create test sessions
+      await createTestSession(child.id, { therapyType: "aba" });
+      await createTestSession(child.id, { therapyType: "slp" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -124,17 +128,19 @@ describe("list_sessions tool", () => {
       const data = result.data as { 
         sessions: unknown[];
         totalCount: number;
-        _mock: boolean;
       };
       
-      expect(data._mock).toBe(true);
       expect(data.sessions).toBeInstanceOf(Array);
+      expect(data.totalCount).toBeGreaterThan(0);
     });
 
     test("accepts type filter", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestSession(child.id, { therapyType: "aba" });
+      await createTestSession(child.id, { therapyType: "slp" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -186,6 +192,11 @@ describe("list_sessions tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      // Create multiple sessions
+      for (let i = 0; i < 10; i++) {
+        await createTestSession(child.id);
+      }
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -272,6 +283,8 @@ describe("list_sessions tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestSession(child.id, { therapyType: "aba", durationMinutes: 45 });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -301,9 +314,34 @@ describe("list_sessions tool", () => {
         expect(session).toHaveProperty("id");
         expect(session).toHaveProperty("childId");
         expect(session).toHaveProperty("type");
-        expect(session).toHaveProperty("startedAt");
+        expect(session).toHaveProperty("sessionDate");
         expect(session).toHaveProperty("durationMinutes");
       }
+    });
+  });
+  
+  describe("empty results", () => {
+    test("returns empty array when no sessions exist", async () => {
+      const family = await createTestFamily();
+      const child = await createTestChild(family.id);
+      const caregiver = await createTestCaregiver(family.id);
+
+      const context: ToolContext = {
+        userId: caregiver.email,
+        familyId: family.id,
+      };
+
+      const result = await executor.executeTool(
+        "list_sessions",
+        { childId: child.id },
+        context
+      );
+
+      expect(result.success).toBe(true);
+      
+      const data = result.data as { sessions: unknown[]; totalCount: number };
+      expect(data.sessions).toEqual([]);
+      expect(data.totalCount).toBe(0);
     });
   });
 });
@@ -331,7 +369,39 @@ describe("get_session tool", () => {
   });
 
   describe("session retrieval", () => {
-    test("returns mock data for any valid UUID (sessions table not yet implemented)", async () => {
+    test("returns session from database", async () => {
+      const family = await createTestFamily();
+      const child = await createTestChild(family.id);
+      const caregiver = await createTestCaregiver(family.id);
+      const session = await createTestSession(child.id, { 
+        therapyType: "aba",
+        notes: "Test session notes" 
+      });
+
+      const context: ToolContext = {
+        userId: caregiver.email,
+        familyId: family.id,
+      };
+
+      const result = await executor.executeTool(
+        "get_session",
+        { sessionId: session.id },
+        context
+      );
+
+      expect(result.success).toBe(true);
+      
+      const data = result.data as { 
+        id: string;
+        childId: string;
+        notes: string | null;
+      };
+      expect(data.id).toBe(session.id);
+      expect(data.childId).toBe(child.id);
+      expect(data.notes).toBe("Test session notes");
+    });
+    
+    test("returns not found for non-existent session", async () => {
       const family = await createTestFamily();
       const caregiver = await createTestCaregiver(family.id);
 
@@ -340,68 +410,36 @@ describe("get_session tool", () => {
         familyId: family.id,
       };
 
-      // For MVP, sessions table doesn't exist yet, so we always return mock data
       const result = await executor.executeTool(
         "get_session",
         { sessionId: "00000000-0000-0000-0000-000000000000" },
         context
       );
 
-      expect(result.success).toBe(true);
-      
-      const data = result.data as { _mock: boolean };
-      expect(data._mock).toBe(true);
-    });
-  });
-
-  describe("mock session retrieval", () => {
-    test("returns mock session detail for mock session ID", async () => {
-      const family = await createTestFamily();
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      // Use a valid RFC 4122 UUID for the session ID
-      const result = await executor.executeTool(
-        "get_session",
-        { sessionId: "550e8400-e29b-41d4-a716-446655440001" },
-        context
-      );
-
-      expect(result.success).toBe(true);
-      
-      const data = result.data as {
-        id: string;
-        notes: string;
-        goalsAddressed: unknown[];
-        dataPoints: unknown[];
-        _mock: boolean;
-      };
-      
-      expect(data._mock).toBe(true);
-      expect(data.notes).toBeDefined();
-      expect(data.goalsAddressed).toBeInstanceOf(Array);
-      expect(data.dataPoints).toBeInstanceOf(Array);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("not found");
     });
   });
 
   describe("response structure", () => {
     test("includes full session details", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const session = await createTestSession(child.id, { 
+        therapyType: "aba",
+        durationMinutes: 45,
+        notes: "Detailed notes"
+      });
 
       const context: ToolContext = {
         userId: caregiver.email,
         familyId: family.id,
       };
 
-      // Use a valid RFC 4122 UUID for the session ID
       const result = await executor.executeTool(
         "get_session",
-        { sessionId: "550e8400-e29b-41d4-a716-446655440002" },
+        { sessionId: session.id },
         context
       );
 
@@ -411,23 +449,18 @@ describe("get_session tool", () => {
         id: string;
         childId: string;
         type: string;
-        startedAt: string;
-        endedAt: string | null;
+        sessionDate: string;
         durationMinutes: number | null;
-        therapistId: string | null;
-        therapistName: string | null;
         notes: string | null;
-        goalsAddressed: Array<{ id: string; name: string }>;
-        dataPoints: Array<{ type: string; label: string; value: unknown }>;
+        goalsWorkedOn: Array<{ id: string; title: string }>;
       };
       
       expect(data).toHaveProperty("id");
       expect(data).toHaveProperty("childId");
       expect(data).toHaveProperty("type");
-      expect(data).toHaveProperty("startedAt");
+      expect(data).toHaveProperty("sessionDate");
       expect(data).toHaveProperty("notes");
-      expect(data).toHaveProperty("goalsAddressed");
-      expect(data).toHaveProperty("dataPoints");
+      expect(data).toHaveProperty("goalsWorkedOn");
     });
   });
 

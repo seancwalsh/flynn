@@ -3,23 +3,14 @@
  *
  * Add a quick note without creating a full session.
  * Useful for capturing observations, milestones, or concerns.
- *
- * NOTE: The notes table doesn't exist yet. This implementation returns
- * mock data and is structured to work correctly once the table is created.
- *
- * TODO: Create notes table with schema:
- * - id: UUID
- * - childId: UUID (FK to children)
- * - authorId: UUID (FK to caregivers or therapists)
- * - type: enum('observation', 'milestone', 'concern', 'general')
- * - content: text
- * - createdAt: timestamp
- * - updatedAt: timestamp
  */
 
 import { z } from "zod/v4";
 import type { Tool, ToolContext, ToolResult } from "@/types/claude";
 import { verifyChildAccess } from "../authorization";
+import { db } from "../../db";
+import { notes, users } from "../../db/schema";
+import { eq } from "drizzle-orm";
 
 // ============================================================================
 // Types
@@ -30,12 +21,11 @@ export type NoteType = "observation" | "milestone" | "concern" | "general";
 export interface CreatedNote {
   id: string;
   childId: string;
-  authorId: string;
+  authorId: string | null;
   type: NoteType;
   content: string;
   createdAt: string;
   updatedAt: string;
-  _mock: boolean;
 }
 
 // ============================================================================
@@ -76,29 +66,26 @@ async function addNote(
     };
   }
 
-  // TODO: Create note in database once table exists
-  // const { db } = await import("@/db");
-  // const { notes } = await import("@/db/schema");
-  //
-  // const [note] = await db.insert(notes).values({
-  //   childId: input.childId,
-  //   authorId: context.userId,
-  //   type: input.type,
-  //   content: trimmedContent,
-  // }).returning();
+  // 3. Look up user ID from email (context.userId is email)
+  let authorId: string | null = null;
+  if (context.userId) {
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, context.userId),
+      columns: { id: true },
+    });
+    authorId = user?.id ?? null;
+  }
 
-  // Return mock data for MVP
-  const now = new Date().toISOString();
-  const mockNote: CreatedNote = {
-    id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    childId: input.childId,
-    authorId: context.userId,
-    type: input.type ?? "general",
-    content: trimmedContent,
-    createdAt: now,
-    updatedAt: now,
-    _mock: true,
-  };
+  // 4. Create note in database
+  const [note] = await db
+    .insert(notes)
+    .values({
+      childId: input.childId,
+      authorId,
+      type: input.type ?? "general",
+      content: trimmedContent,
+    })
+    .returning();
 
   // Craft a contextual success message
   const typeLabel = {
@@ -106,12 +93,20 @@ async function addNote(
     milestone: "milestone",
     concern: "concern",
     general: "note",
-  }[mockNote.type];
+  }[note.type];
 
   return {
     success: true,
     data: {
-      note: mockNote,
+      note: {
+        id: note.id,
+        childId: note.childId,
+        authorId: note.authorId,
+        type: note.type as NoteType,
+        content: note.content,
+        createdAt: note.createdAt.toISOString(),
+        updatedAt: note.updatedAt.toISOString(),
+      },
       message: `Successfully added ${typeLabel}`,
     },
   };

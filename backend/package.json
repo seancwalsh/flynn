@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
+    "scheduler": "bun run src/jobs/scheduler.ts",
+    "job:run": "bun run src/jobs/run-job.ts",
     "build": "bun build src/index.ts --outdir ./dist --target bun",
     "test": "bun test",
     "test:watch": "bun test --watch",
@@ -30,12 +32,14 @@
     "@hono/zod-validator": "^0.7.6",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",
+    "node-cron": "^4.2.1",
     "postgres": "^3.4.8",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bun": "^1.3.6",
     "@types/node": "^25.0.10",
+    "@types/node-cron": "^3.0.11",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "drizzle-kit": "^0.31.8",

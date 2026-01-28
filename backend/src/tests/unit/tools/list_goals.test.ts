@@ -1,8 +1,7 @@
 /**
  * list_goals Tool Tests
  * 
- * This tool currently returns mock data since the goals table
- * doesn't exist yet. Tests verify the interface and authorization.
+ * Tests for listing therapy goals with status filtering.
  */
 
 import { describe, test, expect, beforeEach, afterAll } from "bun:test";
@@ -18,6 +17,7 @@ import {
   createTestFamily, 
   createTestChild, 
   createTestCaregiver,
+  createTestGoal,
 } from "../../fixtures";
 
 // ============================================================================
@@ -88,6 +88,10 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      // Create goals with different statuses
+      await createTestGoal(child.id, { status: "active", title: "Active Goal" });
+      await createTestGoal(child.id, { status: "paused", title: "Paused Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -116,6 +120,9 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { status: "active", title: "Active Goal" });
+      await createTestGoal(child.id, { status: "paused", title: "Paused Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -143,6 +150,8 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { status: "active", title: "Active Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -170,6 +179,9 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { status: "paused", title: "Paused Goal" });
+      await createTestGoal(child.id, { status: "active", title: "Active Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -197,6 +209,9 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { status: "active", title: "Active Goal" });
+      await createTestGoal(child.id, { status: "paused", title: "Paused Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -225,6 +240,14 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { 
+        title: "Test Goal",
+        description: "Test description",
+        therapyType: "aba",
+        status: "active",
+        progressPercent: 50
+      });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -271,6 +294,9 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { therapyType: "aba", title: "ABA Goal" });
+      await createTestGoal(child.id, { therapyType: "slp", title: "SLP Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -289,7 +315,7 @@ describe("list_goals tool", () => {
         goals: Array<{ therapyType: string }>;
       };
       
-      const validTypes = ["ABA", "OT", "SLP", "other"];
+      const validTypes = ["ABA", "OT", "SLP", "OTHER", "COMMUNICATION"];
       for (const goal of data.goals) {
         expect(validTypes).toContain(goal.therapyType);
       }
@@ -299,6 +325,9 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { progressPercent: 50, title: "Goal 1" });
+      await createTestGoal(child.id, { progressPercent: 75, title: "Goal 2" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -327,6 +356,8 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { title: "Test Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -357,6 +388,8 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { status: "active", title: "Active Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -388,6 +421,10 @@ describe("list_goals tool", () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      
+      await createTestGoal(child.id, { status: "active", title: "Active Goal 1" });
+      await createTestGoal(child.id, { status: "active", title: "Active Goal 2" });
+      await createTestGoal(child.id, { status: "paused", title: "Paused Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -420,8 +457,8 @@ describe("list_goals tool", () => {
     });
   });
 
-  describe("mock data indicator", () => {
-    test("indicates mock data", async () => {
+  describe("empty results", () => {
+    test("returns empty array when no goals exist", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
@@ -439,8 +476,9 @@ describe("list_goals tool", () => {
 
       expect(result.success).toBe(true);
       
-      const data = result.data as { _mock: boolean };
-      expect(data._mock).toBe(true);
+      const data = result.data as { goals: Array<unknown>; totalCount: number };
+      expect(data.goals).toEqual([]);
+      expect(data.totalCount).toBe(0);
     });
   });
 

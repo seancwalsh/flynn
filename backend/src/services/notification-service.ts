@@ -8,8 +8,8 @@
  */
 
 import { db } from "../db";
-import { devices, users, notificationPreferences, notificationLogs } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { devices, users, notificationPreferences, notificationLogs, children, caregivers } from "../db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { logger } from "../utils/logger";
 
 // ============================================================================
@@ -131,27 +131,42 @@ class MockNotificationProvider implements NotificationProvider {
 }
 
 // ============================================================================
-// EXPO PROVIDER (placeholder - needs expo-server-sdk)
+// APNs PROVIDER (placeholder - needs Apple Push Notification credentials)
 // ============================================================================
+// 
+// The iOS app is native Swift, so we use APNs (not Expo).
+// Blocked on: FLY-108 - APNs push setup (Team ID, Key ID, auth key from Apple Developer)
+// 
+// Implementation options:
+// 1. Use @parse/node-apn (HTTP/2 based)
+// 2. Use firebase-admin with FCM for iOS
+// 3. Direct HTTP/2 to APNs
 
-class ExpoNotificationProvider implements NotificationProvider {
-  name = "expo";
-  // private expo: ExpoClient; // Would use expo-server-sdk
+class ApnsNotificationProvider implements NotificationProvider {
+  name = "apns";
 
   async send(token: string, payload: NotificationPayload): Promise<SendResult> {
-    // TODO: Implement with expo-server-sdk
-    // const message = {
-    //   to: token,
-    //   sound: payload.sound || 'default',
-    //   title: payload.title,
-    //   body: payload.body,
-    //   data: payload.data,
-    //   priority: payload.priority === 'critical' ? 'high' : 'default',
-    // };
-    // const ticket = await this.expo.sendPushNotificationsAsync([message]);
-    
-    logger.warn(`Expo provider not implemented. Token: ${token.slice(0, 10)}...`);
-    return { success: false, error: "Expo provider not implemented" };
+    // Blocked on FLY-108: APNs credentials needed
+    // Once available, implement with @parse/node-apn:
+    //
+    // const apn = require('@parse/node-apn');
+    // const provider = new apn.Provider({
+    //   token: {
+    //     key: process.env.APNS_KEY_PATH,
+    //     keyId: process.env.APNS_KEY_ID,
+    //     teamId: process.env.APNS_TEAM_ID,
+    //   },
+    //   production: process.env.NODE_ENV === 'production',
+    // });
+    // const notification = new apn.Notification();
+    // notification.alert = { title: payload.title, body: payload.body };
+    // notification.badge = payload.badge;
+    // notification.sound = payload.sound || 'default';
+    // notification.payload = payload.data;
+    // const result = await provider.send(notification, token);
+
+    logger.warn(`APNs provider not implemented. Token: ${token.slice(0, 10)}...`);
+    return { success: false, error: "APNs provider not implemented - awaiting FLY-108" };
   }
 
   async sendBatch(tokens: string[], payload: NotificationPayload): Promise<SendResult[]> {
@@ -168,7 +183,7 @@ class NotificationService {
   private preferences: Map<string, NotificationPreferences> = new Map();
 
   constructor(provider?: NotificationProvider) {
-    // Use mock provider in development, Expo in production
+    // Use mock provider until APNs is configured (FLY-108)
     this.provider = provider || new MockNotificationProvider();
     logger.info(`Notification service initialized with ${this.provider.name} provider`);
   }
@@ -228,10 +243,46 @@ class NotificationService {
     childId: string,
     payload: NotificationPayload
   ): Promise<number> {
-    // TODO: Query caregivers for this child through family
-    // For now, this is a placeholder
-    logger.info(`Would send to caregivers of child ${childId}:`, payload.title);
-    return 0;
+    // Get the child's family
+    const child = await db.query.children.findFirst({
+      where: eq(children.id, childId),
+      columns: { familyId: true },
+    });
+
+    if (!child) {
+      logger.warn(`Child not found: ${childId}`);
+      return 0;
+    }
+
+    // Get all caregivers in this family
+    const familyCaregivers = await db
+      .select({ email: caregivers.email })
+      .from(caregivers)
+      .where(eq(caregivers.familyId, child.familyId));
+
+    if (familyCaregivers.length === 0) {
+      logger.info(`No caregivers found for child ${childId}`);
+      return 0;
+    }
+
+    // Find user IDs for these caregivers (by email)
+    const caregiverEmails = familyCaregivers.map((c) => c.email);
+    const caregiverUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.email, caregiverEmails));
+
+    // Send to each user
+    let sentCount = 0;
+    for (const user of caregiverUsers) {
+      const result = await this.sendToUser(user.id, { ...payload, childId });
+      if (result.sent) {
+        sentCount++;
+      }
+    }
+
+    logger.info(`Sent notification to ${sentCount} caregivers for child ${childId}`);
+    return sentCount;
   }
 
   /**
@@ -395,23 +446,42 @@ class NotificationService {
   private isQuietHours(prefs: NotificationPreferences): boolean {
     if (!prefs.quietHours?.enabled) return false;
 
-    const now = new Date();
-    // TODO: Proper timezone handling
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute;
+    // Get current time in user's timezone
+    const timezone = prefs.quietHours.timezone || "UTC";
+    let userTime: Date;
+    
+    try {
+      // Format current time in user's timezone
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+      });
+      const parts = formatter.formatToParts(now);
+      const hourPart = parts.find((p) => p.type === "hour");
+      const minutePart = parts.find((p) => p.type === "minute");
+      const currentHour = parseInt(hourPart?.value || "0", 10);
+      const currentMinute = parseInt(minutePart?.value || "0", 10);
+      const currentTime = currentHour * 60 + currentMinute;
 
-    const [startHour, startMin] = prefs.quietHours.start.split(":").map(Number);
-    const [endHour, endMin] = prefs.quietHours.end.split(":").map(Number);
-    const startTime = startHour * 60 + startMin;
-    const endTime = endHour * 60 + endMin;
+      const [startHour, startMin] = prefs.quietHours.start.split(":").map(Number);
+      const [endHour, endMin] = prefs.quietHours.end.split(":").map(Number);
+      const startTime = (startHour || 0) * 60 + (startMin || 0);
+      const endTime = (endHour || 0) * 60 + (endMin || 0);
 
-    // Handle overnight quiet hours (e.g., 22:00 - 07:00)
-    if (startTime > endTime) {
-      return currentTime >= startTime || currentTime < endTime;
+      // Handle overnight quiet hours (e.g., 22:00 - 07:00)
+      if (startTime > endTime) {
+        return currentTime >= startTime || currentTime < endTime;
+      }
+
+      return currentTime >= startTime && currentTime < endTime;
+    } catch (error) {
+      // If timezone parsing fails, default to not quiet hours
+      logger.warn(`Failed to parse timezone ${timezone}:`, error);
+      return false;
     }
-
-    return currentTime >= startTime && currentTime < endTime;
   }
 
   /**
@@ -494,4 +564,4 @@ class NotificationService {
 
 export const notificationService = new NotificationService();
 
-export { NotificationService, MockNotificationProvider, ExpoNotificationProvider };
+export { NotificationService, MockNotificationProvider, ApnsNotificationProvider };

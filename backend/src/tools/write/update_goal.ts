@@ -2,23 +2,22 @@
  * update_goal Tool
  *
  * Update goal status or details.
- *
- * NOTE: The goals table doesn't exist yet. This implementation returns
- * mock data and is structured to work correctly once the table is created.
- *
- * TODO: Create goals table (see create_goal.ts for schema)
  */
 
 import { z } from "zod/v4";
 import type { Tool, ToolContext, ToolResult } from "@/types/claude";
 import { GoalNotFoundError, UnauthorizedError } from "../errors";
+import { verifyChildAccess } from "../authorization";
+import { db } from "../../db";
+import { goals, children } from "../../db/schema";
+import { eq } from "drizzle-orm";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export type GoalType = "ABA" | "OT" | "SLP" | "communication" | "other";
-export type GoalStatus = "active" | "completed" | "paused";
+export type GoalStatus = "active" | "achieved" | "paused" | "discontinued";
 
 export interface UpdatedGoal {
   id: string;
@@ -27,13 +26,10 @@ export interface UpdatedGoal {
   title: string;
   description: string | null;
   targetDate: string | null;
-  criteria: string | null;
   status: GoalStatus;
   progress: number;
-  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  _mock: boolean;
 }
 
 // ============================================================================
@@ -42,98 +38,29 @@ export interface UpdatedGoal {
 
 const inputSchema = z.object({
   goalId: z.uuid("Invalid goal ID format"),
-  status: z.enum(["active", "completed", "paused"]).optional(),
+  status: z.enum(["active", "achieved", "paused", "discontinued"]).optional(),
   progress: z
     .number()
     .int("Progress must be a whole number")
     .min(0, "Progress cannot be negative")
     .max(100, "Progress cannot exceed 100%")
     .optional(),
-  notes: z
+  title: z
     .string()
-    .max(2000, "Notes cannot exceed 2,000 characters")
+    .min(3, "Title must be at least 3 characters")
+    .max(255, "Title cannot exceed 255 characters")
     .optional(),
+  description: z
+    .string()
+    .max(2000, "Description cannot exceed 2,000 characters")
+    .optional(),
+  targetDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+    .nullish(),
 });
 
 type UpdateGoalInput = z.infer<typeof inputSchema>;
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Mock function to get goal by ID
- * TODO: Replace with actual database query
- */
-async function getGoalById(
-  goalId: string,
-  context: ToolContext
-): Promise<{
-  childId: string;
-  familyId: string;
-  type: GoalType;
-  title: string;
-  status: GoalStatus;
-  progress: number;
-} | null> {
-  // In real implementation:
-  // const { db } = await import("@/db");
-  // const { goals, children } = await import("@/db/schema");
-  //
-  // const goal = await db.query.goals.findFirst({
-  //   where: eq(goals.id, goalId),
-  //   with: { child: { columns: { familyId: true } } }
-  // });
-
-  // For mock, we accept any goal ID and simulate finding a goal
-  // if the user has a familyId in their context
-  if (context.familyId) {
-    return {
-      childId: "mock-child-id",
-      familyId: context.familyId,
-      type: "ABA",
-      title: "Sample Goal",
-      status: "active",
-      progress: 50,
-    };
-  }
-  // If no familyId in context, return null to simulate goal not found
-  return null;
-}
-
-/**
- * Verify user has access to a goal through its child
- */
-async function verifyGoalAccess(
-  goalId: string,
-  context: ToolContext
-): Promise<{
-  childId: string;
-  familyId: string;
-  type: GoalType;
-  title: string;
-  status: GoalStatus;
-  progress: number;
-}> {
-  if (!context.userId) {
-    throw new UnauthorizedError("User ID is required");
-  }
-
-  const goal = await getGoalById(goalId, context);
-
-  if (!goal) {
-    throw new GoalNotFoundError(goalId);
-  }
-
-  // Verify user has access to the child's family
-  // In real implementation, this would use verifyChildAccess
-  // For mock, we trust the familyId from getGoalById
-  if (context.familyId && goal.familyId !== context.familyId) {
-    throw new UnauthorizedError("You don't have access to this goal");
-  }
-
-  return goal;
-}
 
 // ============================================================================
 // Tool Implementation
@@ -147,87 +74,121 @@ async function updateGoal(
   if (
     input.status === undefined &&
     input.progress === undefined &&
-    input.notes === undefined
+    input.title === undefined &&
+    input.description === undefined &&
+    input.targetDate === undefined
   ) {
     return {
       success: false,
-      error: "At least one field (status, progress, or notes) must be provided to update",
+      error:
+        "At least one field (status, progress, title, description, or targetDate) must be provided to update",
     };
   }
 
-  // 2. Verify authorization through goal's child
-  const goalInfo = await verifyGoalAccess(input.goalId, context);
+  if (!context.userId) {
+    throw new UnauthorizedError("User ID is required");
+  }
 
-  // 3. Business logic validation
-  // If marking as completed, progress should be 100
-  if (input.status === "completed" && input.progress !== undefined && input.progress !== 100) {
+  // 2. Fetch the goal to verify it exists and get childId
+  const [existingGoal] = await db
+    .select({
+      id: goals.id,
+      childId: goals.childId,
+      therapyType: goals.therapyType,
+      title: goals.title,
+      description: goals.description,
+      targetDate: goals.targetDate,
+      status: goals.status,
+      progressPercent: goals.progressPercent,
+      createdAt: goals.createdAt,
+    })
+    .from(goals)
+    .where(eq(goals.id, input.goalId))
+    .limit(1);
+
+  if (!existingGoal) {
+    throw new GoalNotFoundError(input.goalId);
+  }
+
+  // 3. Verify authorization through goal's child
+  await verifyChildAccess(existingGoal.childId, context);
+
+  // 4. Business logic validation
+  if (
+    input.status === "achieved" &&
+    input.progress !== undefined &&
+    input.progress !== 100
+  ) {
     return {
       success: false,
-      error: "When marking a goal as completed, progress should be 100%",
+      error: "When marking a goal as achieved, progress should be 100%",
     };
   }
 
-  // If setting progress to 100, suggest marking as completed
+  // If setting progress to 100, suggest marking as achieved
   const autoComplete = input.progress === 100 && input.status === undefined;
 
-  // TODO: Update goal in database once table exists
-  // const { db } = await import("@/db");
-  // const { goals } = await import("@/db/schema");
-  //
-  // const updateData: Partial<typeof goals.$inferInsert> = {
-  //   updatedAt: new Date(),
-  // };
-  // if (input.status !== undefined) {
-  //   updateData.status = input.status;
-  //   if (input.status === 'completed') {
-  //     updateData.completedAt = new Date();
-  //     updateData.progress = 100;
-  //   }
-  // }
-  // if (input.progress !== undefined) updateData.progress = input.progress;
-  // // Notes could be added to a separate goal_notes table or as an array in the goal
-  //
-  // const [updated] = await db
-  //   .update(goals)
-  //   .set(updateData)
-  //   .where(eq(goals.id, input.goalId))
-  //   .returning();
-
-  // Return mock data for MVP
-  const now = new Date().toISOString();
-  const isCompleted = input.status === "completed";
-
-  const mockUpdatedGoal: UpdatedGoal = {
-    id: input.goalId,
-    childId: goalInfo.childId,
-    type: goalInfo.type,
-    title: goalInfo.title,
-    description: "Goal description",
-    targetDate: null,
-    criteria: null,
-    status: input.status ?? goalInfo.status,
-    progress: input.progress ?? (isCompleted ? 100 : goalInfo.progress),
-    completedAt: isCompleted ? now : null,
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
-    updatedAt: now,
-    _mock: true,
+  // 5. Build update object
+  const updateData: Record<string, unknown> = {
+    updatedAt: new Date(),
   };
 
-  const updatedFields = [];
-  if (input.status !== undefined) updatedFields.push(`status → ${input.status}`);
-  if (input.progress !== undefined) updatedFields.push(`progress → ${input.progress}%`);
-  if (input.notes !== undefined) updatedFields.push("notes added");
+  if (input.status !== undefined) {
+    updateData.status = input.status;
+    if (input.status === "achieved") {
+      updateData.progressPercent = 100;
+    }
+  }
+  if (input.progress !== undefined) {
+    updateData.progressPercent = input.progress;
+  }
+  if (input.title !== undefined) {
+    updateData.title = input.title;
+  }
+  if (input.description !== undefined) {
+    updateData.description = input.description;
+  }
+  if (input.targetDate !== undefined) {
+    updateData.targetDate = input.targetDate;
+  }
 
-  let message = `Successfully updated goal "${goalInfo.title}": ${updatedFields.join(", ")}`;
+  // 6. Update in database
+  const [updated] = await db
+    .update(goals)
+    .set(updateData)
+    .where(eq(goals.id, input.goalId))
+    .returning();
+
+  const updatedFields: string[] = [];
+  if (input.status !== undefined) updatedFields.push(`status → ${input.status}`);
+  if (input.progress !== undefined)
+    updatedFields.push(`progress → ${input.progress}%`);
+  if (input.title !== undefined) updatedFields.push("title updated");
+  if (input.description !== undefined) updatedFields.push("description updated");
+  if (input.targetDate !== undefined) updatedFields.push("target date updated");
+
+  let message = `Successfully updated goal "${updated.title}": ${updatedFields.join(", ")}`;
 
   if (autoComplete) {
-    message += ". Consider marking this goal as 'completed' since progress is at 100%.";
+    message +=
+      ". Consider marking this goal as 'achieved' since progress is at 100%.";
   }
 
   return {
     success: true,
     data: {
-      goal: mockUpdatedGoal,
+      goal: {
+        id: updated.id,
+        childId: updated.childId,
+        type: updated.therapyType.toUpperCase() as GoalType,
+        title: updated.title,
+        description: updated.description,
+        targetDate: updated.targetDate,
+        status: updated.status as GoalStatus,
+        progress: updated.progressPercent ?? 0,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      },
       message,
       suggestCompletion: autoComplete,
     },
@@ -241,7 +202,7 @@ async function updateGoal(
 export const updateGoalTool: Tool<UpdateGoalInput> = {
   name: "update_goal",
   description:
-    "Update goal status or progress. Can change status (active/completed/paused), update progress percentage (0-100), or add notes. The AI should confirm changes with the user before calling this.",
+    "Update goal status or progress. Can change status (active/achieved/paused/discontinued), update progress percentage (0-100), or modify title/description/targetDate. The AI should confirm changes with the user before calling this.",
   inputSchema,
   execute: updateGoal,
 };

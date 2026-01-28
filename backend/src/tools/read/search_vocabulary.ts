@@ -3,19 +3,19 @@
  * 
  * Search for symbols in a child's AAC vocabulary with usage statistics.
  * 
- * NOTE: The symbols/vocabulary table doesn't exist yet. This implementation
- * uses the usageLogs table to find symbols that have been used, and generates
- * mock metadata. Once a proper symbols table exists, this can be enhanced
- * with actual symbol names, images, and categories.
+ * NOTE: The symbols/vocabulary data comes from the iOS app via CloudKit.
+ * This implementation uses the usageLogs table to find symbols that have
+ * been used. Full symbol metadata (names, images, categories) will be
+ * available after iOS CloudKit sync is implemented.
  * 
- * TODO: Create symbols table with schema:
+ * Future: Symbols table schema (synced from CloudKit):
  * - id: UUID
- * - symbolId: varchar(255) - external ID from symbol library
- * - name: varchar(255)
+ * - symbolId: varchar(255) - external ID from symbol library (ARASAAC, custom)
+ * - name: varchar(255) - English name
+ * - nameBg: varchar(255) - Bulgarian name  
  * - category: varchar(100)
- * - subcategory: varchar(100) (optional)
  * - imageUrl: varchar(500)
- * - tags: text[] - searchable tags
+ * - language: varchar(10) - en, bg, etc.
  * - createdAt: timestamp
  */
 

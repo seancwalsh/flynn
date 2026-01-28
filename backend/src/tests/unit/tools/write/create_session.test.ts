@@ -62,7 +62,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "ABA",
           date: today,
-          duration: 45,
+          durationMinutes: 45,
           notes: "Good session today",
         },
         context
@@ -254,7 +254,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "ABA",
           date: today,
-          duration: 0,
+          durationMinutes: 0,
         },
         context
       );
@@ -280,7 +280,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "ABA",
           date: today,
-          duration: 500,
+          durationMinutes: 500,
         },
         context
       );
@@ -306,7 +306,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "ABA",
           date: today,
-          duration: 45.5,
+          durationMinutes: 45.5,
         },
         context
       );
@@ -364,7 +364,7 @@ describe("create_session tool", () => {
       expect(result.error).toContain("Invalid input");
     });
 
-    test("validates goalsAddressed contains valid UUIDs", async () => {
+    test("validates goalsWorkedOn contains valid UUIDs", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
@@ -381,7 +381,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "ABA",
           date: today,
-          goalsAddressed: ["not-a-uuid", "also-not-a-uuid"],
+          goalsWorkedOn: [{ goalId: "not-a-uuid" }],
         },
         context
       );
@@ -518,7 +518,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "OT",
           date: today,
-          duration: 60,
+          durationMinutes: 60,
           notes: "Worked on fine motor skills",
         },
         context
@@ -532,11 +532,10 @@ describe("create_session tool", () => {
           childId: string;
           type: string;
           date: string;
-          duration: number;
+          durationMinutes: number;
           notes: string;
           createdAt: string;
-          updatedAt: string;
-          _mock: boolean;
+          goalsWorkedOn: Array<{ goalId: string }>;
         };
         message: string;
       };
@@ -547,14 +546,13 @@ describe("create_session tool", () => {
       expect(data.session.childId).toBe(child.id);
       expect(data.session.type).toBe("OT");
       expect(data.session.date).toBe(today);
-      expect(data.session.duration).toBe(60);
+      expect(data.session.durationMinutes).toBe(60);
       expect(data.session.notes).toBe("Worked on fine motor skills");
       expect(data.session.createdAt).toBeDefined();
-      expect(data.session.updatedAt).toBeDefined();
       expect(data.message).toContain("Successfully");
     });
 
-    test("indicates mock data", async () => {
+    test("persists session to database", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
@@ -577,8 +575,19 @@ describe("create_session tool", () => {
 
       expect(result.success).toBe(true);
 
-      const data = result.data as { session: { _mock: boolean } };
-      expect(data.session._mock).toBe(true);
+      const data = result.data as { session: { id: string } };
+      
+      // Verify session exists in database
+      const { db } = await import("../../../../db");
+      const { therapySessions } = await import("../../../../db/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const dbSession = await db.query.therapySessions.findFirst({
+        where: eq(therapySessions.id, data.session.id),
+      });
+      
+      expect(dbSession).toBeDefined();
+      expect(dbSession?.childId).toBe(child.id);
     });
 
     test("handles optional fields correctly", async () => {
@@ -598,7 +607,7 @@ describe("create_session tool", () => {
           childId: child.id,
           type: "SLP",
           date: today,
-          // duration, notes, goalsAddressed all omitted
+          // durationMinutes, notes, goalsWorkedOn all omitted
         },
         context
       );
@@ -607,15 +616,15 @@ describe("create_session tool", () => {
 
       const data = result.data as {
         session: {
-          duration: number | null;
+          durationMinutes: number | null;
           notes: string | null;
-          goalsAddressed: string[];
+          goalsWorkedOn: Array<{ goalId: string }>;
         };
       };
 
-      expect(data.session.duration).toBeNull();
+      expect(data.session.durationMinutes).toBeNull();
       expect(data.session.notes).toBeNull();
-      expect(data.session.goalsAddressed).toEqual([]);
+      expect(data.session.goalsWorkedOn).toEqual([]);
     });
   });
 

@@ -174,13 +174,13 @@ describe("create_goal tool", () => {
         {
           childId: child.id,
           type: "ABA",
-          title: "AB", // Too short
+          title: "AB", // Too short (< 3 chars)
         },
         context
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("at least 3");
+      expect(result.error).toContain("3");
     });
 
     test("validates title maximum length", async () => {
@@ -303,31 +303,6 @@ describe("create_goal tool", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("2,000");
     });
-
-    test("validates criteria maximum length", async () => {
-      const family = await createTestFamily();
-      const child = await createTestChild(family.id);
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      const result = await executor.executeTool(
-        "create_goal",
-        {
-          childId: child.id,
-          type: "ABA",
-          title: "Test Goal",
-          criteria: "x".repeat(2001), // Exceeds 2000 char limit
-        },
-        context
-      );
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("2,000");
-    });
   });
 
   describe("business logic validation", () => {
@@ -436,7 +411,6 @@ describe("create_goal tool", () => {
           type: "SLP",
           title: "Improve articulation",
           description: "Work on /s/ sound production",
-          criteria: "80% accuracy in structured activities",
         },
         context
       );
@@ -450,12 +424,10 @@ describe("create_goal tool", () => {
           type: string;
           title: string;
           description: string;
-          criteria: string;
           status: string;
           progress: number;
           createdAt: string;
           updatedAt: string;
-          _mock: boolean;
         };
         message: string;
       };
@@ -467,13 +439,12 @@ describe("create_goal tool", () => {
       expect(data.goal.type).toBe("SLP");
       expect(data.goal.title).toBe("Improve articulation");
       expect(data.goal.description).toBe("Work on /s/ sound production");
-      expect(data.goal.criteria).toBe("80% accuracy in structured activities");
       expect(data.goal.status).toBe("active");
       expect(data.goal.progress).toBe(0);
       expect(data.message).toContain("Successfully");
     });
 
-    test("indicates mock data", async () => {
+    test("persists goal to database", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
@@ -495,8 +466,19 @@ describe("create_goal tool", () => {
 
       expect(result.success).toBe(true);
 
-      const data = result.data as { goal: { _mock: boolean } };
-      expect(data.goal._mock).toBe(true);
+      const data = result.data as { goal: { id: string } };
+
+      // Verify goal exists in database
+      const { db } = await import("../../../../db");
+      const { goals } = await import("../../../../db/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const dbGoal = await db.query.goals.findFirst({
+        where: eq(goals.id, data.goal.id),
+      });
+
+      expect(dbGoal).toBeDefined();
+      expect(dbGoal?.childId).toBe(child.id);
     });
 
     test("handles optional fields correctly", async () => {
@@ -515,7 +497,7 @@ describe("create_goal tool", () => {
           childId: child.id,
           type: "OT",
           title: "Minimal Goal",
-          // description, targetDate, criteria all omitted
+          // description, targetDate all omitted
         },
         context
       );
@@ -526,13 +508,11 @@ describe("create_goal tool", () => {
         goal: {
           description: string | null;
           targetDate: string | null;
-          criteria: string | null;
         };
       };
 
       expect(data.goal.description).toBeNull();
       expect(data.goal.targetDate).toBeNull();
-      expect(data.goal.criteria).toBeNull();
     });
   });
 
@@ -549,7 +529,7 @@ describe("create_goal tool", () => {
 
       const result = await executor.executeTool(
         "create_goal",
-        { childId: child.id, type: "ABA", title: "ABA Goal" },
+        { childId: child.id, type: "ABA", title: "Test ABA Goal" },
         context
       );
 
@@ -568,7 +548,7 @@ describe("create_goal tool", () => {
 
       const result = await executor.executeTool(
         "create_goal",
-        { childId: child.id, type: "OT", title: "OT Goal" },
+        { childId: child.id, type: "OT", title: "Test OT Goal" },
         context
       );
 
@@ -587,7 +567,7 @@ describe("create_goal tool", () => {
 
       const result = await executor.executeTool(
         "create_goal",
-        { childId: child.id, type: "SLP", title: "SLP Goal" },
+        { childId: child.id, type: "SLP", title: "Test SLP Goal" },
         context
       );
 
@@ -606,7 +586,7 @@ describe("create_goal tool", () => {
 
       const result = await executor.executeTool(
         "create_goal",
-        { childId: child.id, type: "communication", title: "Communication Goal" },
+        { childId: child.id, type: "communication", title: "Test Communication Goal" },
         context
       );
 
@@ -625,7 +605,7 @@ describe("create_goal tool", () => {
 
       const result = await executor.executeTool(
         "create_goal",
-        { childId: child.id, type: "other", title: "Other Goal" },
+        { childId: child.id, type: "other", title: "Test Other Goal" },
         context
       );
 

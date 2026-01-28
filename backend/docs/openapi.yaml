@@ -1,0 +1,982 @@
+openapi: 3.1.0
+info:
+  title: Flynn AAC API
+  description: |
+    Backend API for Flynn AAC - AI-powered insights for child communication development.
+    
+    ## Authentication
+    All endpoints (except webhooks) require a valid Clerk JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <clerk-jwt-token>
+    ```
+    
+    ## Authorization
+    Users can only access resources within their family. The API automatically scopes 
+    queries based on the authenticated user's family membership.
+  version: 0.1.0
+  contact:
+    name: Flynn AAC Team
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk JWT token
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+      required:
+        - error
+
+    Family:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    Child:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - familyId
+        - name
+        - createdAt
+
+    Caregiver:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [parent, guardian, grandparent, nanny, other]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - familyId
+        - name
+        - email
+        - role
+        - createdAt
+
+    Therapist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - createdAt
+
+    UsageLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        symbolId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        sessionId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - id
+        - childId
+        - symbolId
+        - timestamp
+
+    Insight:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [daily_digest, weekly_report, regression_alert, milestone, suggestion, anomaly_warning, anomaly_critical]
+        severity:
+          type: string
+          enum: [info, warning, critical]
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        body:
+          type: string
+          nullable: true
+        content:
+          type: object
+        generatedAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        dismissedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - childId
+        - type
+        - content
+        - generatedAt
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        caregiverId:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - caregiverId
+        - createdAt
+        - updatedAt
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, tool_call, tool_result]
+        content:
+          type: string
+        toolName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    NotificationPreferences:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        typeSettings:
+          type: object
+        quietHoursEnabled:
+          type: boolean
+        quietHoursStart:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        quietHoursEnd:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        timezone:
+          type: string
+        maxPerHour:
+          type: integer
+        maxPerDay:
+          type: integer
+
+security:
+  - bearerAuth: []
+
+paths:
+  /families:
+    get:
+      summary: List families
+      description: Get all families the authenticated user has access to
+      tags: [Families]
+      responses:
+        '200':
+          description: List of families
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Family'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Create family
+      description: Create a new family
+      tags: [Families]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required:
+                - name
+      responses:
+        '201':
+          description: Family created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Family'
+        '400':
+          description: Invalid input
+
+  /families/{id}:
+    get:
+      summary: Get family
+      description: Get a specific family by ID
+      tags: [Families]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Family details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Family'
+        '404':
+          description: Family not found
+
+  /children:
+    get:
+      summary: List children
+      description: Get all children in the user's family
+      tags: [Children]
+      parameters:
+        - name: familyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of children
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Child'
+    post:
+      summary: Create child
+      description: Add a new child to a family
+      tags: [Children]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                familyId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                birthDate:
+                  type: string
+                  format: date
+              required:
+                - familyId
+                - name
+      responses:
+        '201':
+          description: Child created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+
+  /children/{id}:
+    get:
+      summary: Get child
+      description: Get a specific child by ID
+      tags: [Children]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Child details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '404':
+          description: Child not found
+    put:
+      summary: Update child
+      description: Update a child's information
+      tags: [Children]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                birthDate:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Child updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+    delete:
+      summary: Delete child
+      description: Remove a child from the system
+      tags: [Children]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Child deleted
+
+  /usage-logs:
+    get:
+      summary: List usage logs
+      description: Get usage logs for a child
+      tags: [Usage Logs]
+      parameters:
+        - name: childId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: List of usage logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsageLog'
+    post:
+      summary: Create usage log
+      description: Record a new symbol usage
+      tags: [Usage Logs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId:
+                  type: string
+                  format: uuid
+                symbolId:
+                  type: string
+                timestamp:
+                  type: string
+                  format: date-time
+                sessionId:
+                  type: string
+                  format: uuid
+              required:
+                - childId
+                - symbolId
+      responses:
+        '201':
+          description: Usage log created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageLog'
+
+  /usage-logs/batch:
+    post:
+      summary: Batch create usage logs
+      description: Record multiple symbol usages at once (from iOS sync)
+      tags: [Usage Logs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      childId:
+                        type: string
+                        format: uuid
+                      symbolId:
+                        type: string
+                      timestamp:
+                        type: string
+                        format: date-time
+                      sessionId:
+                        type: string
+                        format: uuid
+                    required:
+                      - childId
+                      - symbolId
+              required:
+                - logs
+      responses:
+        '201':
+          description: Usage logs created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created:
+                    type: integer
+                  failed:
+                    type: integer
+
+  /insights:
+    get:
+      summary: List insights
+      description: Get AI-generated insights for a child
+      tags: [Insights]
+      parameters:
+        - name: childId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [daily_digest, weekly_report, regression_alert, milestone, suggestion]
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Insight'
+                  total:
+                    type: integer
+
+  /insights/{id}/read:
+    post:
+      summary: Mark insight as read
+      description: Mark a specific insight as read
+      tags: [Insights]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Insight marked as read
+
+  /insights/{id}/dismiss:
+    post:
+      summary: Dismiss insight
+      description: Dismiss an insight (won't show again)
+      tags: [Insights]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Insight dismissed
+
+  /insights/unread-count:
+    get:
+      summary: Get unread count
+      description: Get count of unread insights
+      tags: [Insights]
+      parameters:
+        - name: childId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unreadCount:
+                    type: integer
+
+  /conversations:
+    get:
+      summary: List conversations
+      description: Get all conversations for the authenticated caregiver
+      tags: [Conversations]
+      parameters:
+        - name: childId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+    post:
+      summary: Create conversation
+      description: Start a new AI conversation
+      tags: [Conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{id}:
+    get:
+      summary: Get conversation
+      description: Get a conversation with its messages
+      tags: [Conversations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Conversation'
+                  - type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Message'
+
+  /conversations/{id}/messages:
+    post:
+      summary: Send message
+      description: Send a message to the AI assistant
+      tags: [Conversations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        '200':
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /notifications/preferences:
+    get:
+      summary: Get notification preferences
+      description: Get the authenticated user's notification preferences
+      tags: [Notifications]
+      responses:
+        '200':
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+    put:
+      summary: Update notification preferences
+      description: Update notification preferences
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
+      responses:
+        '200':
+          description: Preferences updated
+
+  /notifications/devices:
+    post:
+      summary: Register device
+      description: Register a device for push notifications
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceToken:
+                  type: string
+                platform:
+                  type: string
+                  enum: [ios, android, web]
+              required:
+                - deviceToken
+                - platform
+      responses:
+        '201':
+          description: Device registered
+
+  /caregivers:
+    get:
+      summary: List caregivers
+      description: Get all caregivers in the user's family
+      tags: [Caregivers]
+      parameters:
+        - name: familyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of caregivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Caregiver'
+    post:
+      summary: Create caregiver
+      description: Add a new caregiver to a family
+      tags: [Caregivers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                familyId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [parent, guardian, grandparent, nanny, other]
+              required:
+                - familyId
+                - name
+                - email
+                - role
+      responses:
+        '201':
+          description: Caregiver created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Caregiver'
+
+  /therapists:
+    get:
+      summary: List therapists
+      description: Get all therapists with access to children in the user's family
+      tags: [Therapists]
+      responses:
+        '200':
+          description: List of therapists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Therapist'
+
+  /therapists/{id}/clients:
+    post:
+      summary: Grant therapist access
+      description: Grant a therapist access to a child
+      tags: [Therapists]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId:
+                  type: string
+                  format: uuid
+              required:
+                - childId
+      responses:
+        '201':
+          description: Access granted
+    delete:
+      summary: Revoke therapist access
+      description: Revoke a therapist's access to a child
+      tags: [Therapists]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId:
+                  type: string
+                  format: uuid
+              required:
+                - childId
+      responses:
+        '204':
+          description: Access revoked
+
+  /auth/webhook:
+    post:
+      summary: Clerk webhook
+      description: Webhook endpoint for Clerk authentication events
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook processed
+
+tags:
+  - name: Families
+    description: Family management
+  - name: Children
+    description: Child profiles
+  - name: Caregivers
+    description: Caregiver management
+  - name: Therapists
+    description: Therapist management
+  - name: Usage Logs
+    description: AAC symbol usage tracking
+  - name: Insights
+    description: AI-generated insights and digests
+  - name: Conversations
+    description: AI chat conversations
+  - name: Notifications
+    description: Push notification management
+  - name: Auth
+    description: Authentication webhooks

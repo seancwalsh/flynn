@@ -100,9 +100,9 @@ async function createCustomSymbol(
   // 2. Validate image source consistency (Zod superRefine handles basic validation,
   //    but we can add additional checks here if needed)
 
-  // TODO: Validate categoryId exists (will need category table or CloudKit integration)
+  // Note: categoryId validation blocked on symbols/categories sync from iOS CloudKit
 
-  // TODO FLY-81: Full implementation will include:
+  // FLY-81: Full implementation blocked on iOS integration, will include:
   // - Calling AI image generation service if imageSource === 'generate'
   // - Uploading generated/provided image to CloudKit
   // - Creating symbol record in CloudKit

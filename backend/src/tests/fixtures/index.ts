@@ -6,7 +6,7 @@
  */
 
 import { getTestDb } from "../setup";
-import { families, children, caregivers, therapists, usageLogs, insights } from "../../db/schema";
+import { families, children, caregivers, therapists, usageLogs, insights, goals, therapySessions, notes } from "../../db/schema";
 
 /**
  * Create a test family and return its data
@@ -109,6 +109,82 @@ export async function createTestInsight(
     },
   }).returning();
   return insight;
+}
+
+/**
+ * Create a test goal for a child
+ */
+export async function createTestGoal(
+  childId: string,
+  overrides: {
+    title?: string;
+    description?: string;
+    therapyType?: string;
+    status?: string;
+    progressPercent?: number;
+    targetDate?: string;
+  } = {}
+) {
+  const db = getTestDb();
+  const [goal] = await db.insert(goals).values({
+    childId,
+    title: overrides.title ?? "Test Goal",
+    description: overrides.description ?? "Test goal description",
+    therapyType: overrides.therapyType ?? "aba",
+    status: overrides.status ?? "active",
+    progressPercent: overrides.progressPercent ?? 0,
+    targetDate: overrides.targetDate ?? null,
+  }).returning();
+  return goal;
+}
+
+/**
+ * Create a test therapy session for a child
+ */
+export async function createTestSession(
+  childId: string,
+  overrides: {
+    therapyType?: string;
+    sessionDate?: string;
+    durationMinutes?: number;
+    notes?: string;
+    therapistId?: string;
+    goalsWorkedOn?: Array<{ goalId: string; progress?: number; notes?: string }>;
+  } = {}
+) {
+  const db = getTestDb();
+  const today = new Date().toISOString().split("T")[0] as string;
+  const [session] = await db.insert(therapySessions).values({
+    childId,
+    therapyType: overrides.therapyType ?? "aba",
+    sessionDate: overrides.sessionDate ?? today,
+    durationMinutes: overrides.durationMinutes ?? 45,
+    notes: overrides.notes ?? null,
+    therapistId: overrides.therapistId ?? null,
+    goalsWorkedOn: overrides.goalsWorkedOn ?? null,
+  }).returning();
+  return session;
+}
+
+/**
+ * Create a test note for a child
+ */
+export async function createTestNote(
+  childId: string,
+  overrides: {
+    content?: string;
+    type?: string;
+    authorId?: string;
+  } = {}
+) {
+  const db = getTestDb();
+  const [note] = await db.insert(notes).values({
+    childId,
+    content: overrides.content ?? "Test note content",
+    type: overrides.type ?? "general",
+    authorId: overrides.authorId ?? null,
+  }).returning();
+  return note;
 }
 
 /**

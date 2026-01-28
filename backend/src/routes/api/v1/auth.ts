@@ -62,10 +62,16 @@ authRoutes.post("/webhook", async (c) => {
   
   const body = await c.req.text();
   
-  // Verify webhook signature (skip in test mode)
+  // Verify webhook signature
   let event: ClerkWebhookEvent;
   
-  if (env.CLERK_WEBHOOK_SECRET && env.NODE_ENV !== "test") {
+  // In production, webhook secret is REQUIRED
+  if (env.NODE_ENV === "production" && !env.CLERK_WEBHOOK_SECRET) {
+    console.error("CLERK_WEBHOOK_SECRET is required in production");
+    throw new AppError("Webhook configuration error", 500, "CONFIG_ERROR");
+  }
+  
+  if (env.CLERK_WEBHOOK_SECRET) {
     try {
       const wh = new Webhook(env.CLERK_WEBHOOK_SECRET);
       event = wh.verify(body, {
@@ -78,7 +84,8 @@ authRoutes.post("/webhook", async (c) => {
       throw new AppError("Invalid webhook signature", 400, "INVALID_SIGNATURE");
     }
   } else {
-    // In development/test without webhook secret, parse directly
+    // Only in development/test without webhook secret
+    console.warn("⚠️ Webhook signature verification SKIPPED (no CLERK_WEBHOOK_SECRET)");
     event = JSON.parse(body) as ClerkWebhookEvent;
   }
   

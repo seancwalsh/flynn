@@ -127,10 +127,10 @@ export async function aggregateDailyMetrics(
   const metrics: Partial<NewDailyMetric> = {
     totalTaps: logs.length,
     uniqueSymbols: uniqueSymbolIds.size,
-    uniqueCategories: 0, // TODO: Would need category lookup
+    uniqueCategories: 0, // Blocked: Needs symbols table sync from iOS/CloudKit
     sessionCount: sessionIds.size,
-    phrasesBuilt: 0, // TODO: Would need phrase detection logic
-    bulgarianTaps: 0, // TODO: Would need language detection
+    phrasesBuilt: 0, // Blocked: Needs phrase detection from iOS usage patterns
+    bulgarianTaps: 0, // Blocked: Needs symbol language metadata from iOS/CloudKit
     englishTaps: 0,
     hourlyDistribution: hourlyDistribution as unknown as Record<string, unknown>,
     topSymbols: topSymbols as unknown as Record<string, unknown>[],

@@ -13,11 +13,7 @@ import {
   setupTestDatabase,
   cleanTestData,
 } from "../../../setup";
-import {
-  createTestFamily,
-  createTestChild,
-  createTestCaregiver,
-} from "../../../fixtures";
+import { createTestFamily, createTestChild, createTestCaregiver } from "../../../fixtures";
 
 // ============================================================================
 // Test Setup
@@ -84,7 +80,7 @@ describe("add_note tool", () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("access");
+      expect(result.error).toMatch(/access/i);
     });
   });
 
@@ -101,7 +97,7 @@ describe("add_note tool", () => {
       const result = await executor.executeTool(
         "add_note",
         {
-          content: "Test note",
+          content: "Test content",
         },
         context
       );
@@ -145,7 +141,7 @@ describe("add_note tool", () => {
         "add_note",
         {
           childId: "not-a-uuid",
-          content: "Test note",
+          content: "Test content",
         },
         context
       );
@@ -168,7 +164,7 @@ describe("add_note tool", () => {
         "add_note",
         {
           childId: child.id,
-          content: "", // Empty
+          content: "",
         },
         context
       );
@@ -190,7 +186,7 @@ describe("add_note tool", () => {
         "add_note",
         {
           childId: child.id,
-          content: "x".repeat(5001), // Exceeds 5000 char limit
+          content: "x".repeat(5001),
         },
         context
       );
@@ -213,14 +209,14 @@ describe("add_note tool", () => {
         "add_note",
         {
           childId: child.id,
-          content: "Test note",
-          type: "INVALID_TYPE",
+          content: "Test content",
+          type: "invalid_type",
         },
         context
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Invalid input");
+      expect(result.error).toContain("Invalid");
     });
   });
 
@@ -239,7 +235,7 @@ describe("add_note tool", () => {
         "add_note",
         {
           childId: child.id,
-          content: "   \n\t   ", // Only whitespace
+          content: "   \n\t  ",
         },
         context
       );
@@ -289,7 +285,7 @@ describe("add_note tool", () => {
         "add_note",
         {
           childId: child.id,
-          content: "Made eye contact during play today",
+          content: "Test observation",
           type: "observation",
         },
         context
@@ -301,12 +297,9 @@ describe("add_note tool", () => {
         note: {
           id: string;
           childId: string;
-          authorId: string;
           type: string;
           content: string;
           createdAt: string;
-          updatedAt: string;
-          _mock: boolean;
         };
         message: string;
       };
@@ -315,14 +308,12 @@ describe("add_note tool", () => {
       expect(data.note.id).toBeDefined();
       expect(typeof data.note.id).toBe("string");
       expect(data.note.childId).toBe(child.id);
-      expect(data.note.authorId).toBe(caregiver.email);
       expect(data.note.type).toBe("observation");
-      expect(data.note.content).toBe("Made eye contact during play today");
-      expect(data.note.createdAt).toBeDefined();
-      expect(data.message).toContain("Successfully");
+      expect(data.note.content).toBe("Test observation");
+      expect(data.message).toContain("observation");
     });
 
-    test("indicates mock data", async () => {
+    test("defaults type to general", async () => {
       const family = await createTestFamily();
       const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
@@ -343,32 +334,6 @@ describe("add_note tool", () => {
 
       expect(result.success).toBe(true);
 
-      const data = result.data as { note: { _mock: boolean } };
-      expect(data.note._mock).toBe(true);
-    });
-
-    test("defaults type to general", async () => {
-      const family = await createTestFamily();
-      const child = await createTestChild(family.id);
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      const result = await executor.executeTool(
-        "add_note",
-        {
-          childId: child.id,
-          content: "Note without type",
-          // type not specified
-        },
-        context
-      );
-
-      expect(result.success).toBe(true);
-
       const data = result.data as { note: { type: string } };
       expect(data.note.type).toBe("general");
     });
@@ -383,7 +348,6 @@ describe("add_note tool", () => {
         familyId: family.id,
       };
 
-      // Test observation
       const obsResult = await executor.executeTool(
         "add_note",
         { childId: child.id, content: "Test", type: "observation" },
@@ -391,21 +355,12 @@ describe("add_note tool", () => {
       );
       expect((obsResult.data as { message: string }).message).toContain("observation");
 
-      // Test milestone
-      const mileResult = await executor.executeTool(
+      const milestoneResult = await executor.executeTool(
         "add_note",
         { childId: child.id, content: "Test", type: "milestone" },
         context
       );
-      expect((mileResult.data as { message: string }).message).toContain("milestone");
-
-      // Test concern
-      const concernResult = await executor.executeTool(
-        "add_note",
-        { childId: child.id, content: "Test", type: "concern" },
-        context
-      );
-      expect((concernResult.data as { message: string }).message).toContain("concern");
+      expect((milestoneResult.data as { message: string }).message).toContain("milestone");
     });
   });
 

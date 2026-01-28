@@ -436,7 +436,8 @@ export async function runRegressionDetectionJob(
 
   for (const child of allChildren) {
     try {
-      // TODO: Load child context from database
+      // Future: Load child context (isIll, isOnVacation, etc.) from a child_context table
+      // This enables context-aware regression detection that accounts for expected usage drops
       const alertCount = await detectAndSaveRegressions(child.id, undefined, config);
       totalAlerts += alertCount;
     } catch (error) {

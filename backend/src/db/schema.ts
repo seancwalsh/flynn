@@ -513,3 +513,35 @@ export type NewTherapySession = typeof therapySessions.$inferInsert;
 
 export type GoalProgressEntry = typeof goalProgress.$inferSelect;
 export type NewGoalProgressEntry = typeof goalProgress.$inferInsert;
+
+// ============================================================================
+// NOTES (Quick observations, milestones, concerns)
+// ============================================================================
+
+// Notes - quick observations without full session logging
+export const notes = pgTable("notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  authorId: uuid("author_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  
+  // Note details
+  type: varchar("type", { length: 20 }).notNull().default("general"), // observation, milestone, concern, general
+  content: text("content").notNull(),
+  
+  // Optional attachment (future: could link to images, etc.)
+  attachmentUrl: varchar("attachment_url", { length: 500 }),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("notes_child_idx").on(table.childId),
+  index("notes_type_idx").on(table.type),
+  index("notes_created_idx").on(table.createdAt),
+]);
+
+export type Note = typeof notes.$inferSelect;
+export type NewNote = typeof notes.$inferInsert;

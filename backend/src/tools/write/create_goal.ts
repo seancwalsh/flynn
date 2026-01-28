@@ -94,6 +94,12 @@ async function createGoal(
     }
   }
 
+  // Check if userId is a valid UUID for the createdBy field
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const createdByUserId = context.userId && uuidRegex.test(context.userId) 
+    ? context.userId 
+    : null;
+
   // Create goal in database
   const [goal] = await db.insert(goals).values({
     childId: input.childId,
@@ -103,7 +109,7 @@ async function createGoal(
     targetDate: input.targetDate ?? null,
     status: "active",
     progressPercent: 0,
-    createdBy: context.userId,
+    createdBy: createdByUserId,
   }).returning();
 
   return {

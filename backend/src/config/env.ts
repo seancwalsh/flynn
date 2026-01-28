@@ -7,6 +7,11 @@ const envSchema = z.object({
   REDIS_URL: z.string().default("redis://localhost:6379"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   
+  // Clerk Authentication
+  CLERK_SECRET_KEY: z.string().optional(), // Required for auth - sk_test_... or sk_live_...
+  CLERK_PUBLISHABLE_KEY: z.string().optional(), // For reference - pk_test_... or pk_live_...
+  CLERK_WEBHOOK_SECRET: z.string().optional(), // Required in production for webhook verification
+  
   // Anthropic API
   ANTHROPIC_API_KEY: z.string().optional(),
 });

@@ -2,26 +2,14 @@
  * create_session Tool
  *
  * Log a new therapy session.
- *
- * NOTE: The sessions table doesn't exist yet. This implementation returns
- * mock data and is structured to work correctly once the table is created.
- *
- * TODO: Create sessions table with schema:
- * - id: UUID
- * - childId: UUID (FK to children)
- * - therapistId: UUID (FK to therapists, nullable for parent sessions)
- * - type: enum('ABA', 'OT', 'SLP', 'other')
- * - date: date
- * - duration: integer (minutes)
- * - notes: text
- * - goalsAddressed: UUID[] (FK to goals)
- * - createdAt: timestamp
- * - updatedAt: timestamp
  */
 
 import { z } from "zod/v4";
 import type { Tool, ToolContext, ToolResult } from "@/types/claude";
 import { verifyChildAccess } from "../authorization";
+import { db } from "../../db";
+import { therapySessions, goals } from "../../db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 // ============================================================================
 // Types
@@ -34,12 +22,10 @@ export interface CreatedSession {
   childId: string;
   type: SessionType;
   date: string;
-  duration: number | null;
+  durationMinutes: number | null;
   notes: string | null;
-  goalsAddressed: string[];
+  goalsWorkedOn: Array<{ goalId: string; progress?: number; notes?: string }>;
   createdAt: string;
-  updatedAt: string;
-  _mock: boolean;
 }
 
 // ============================================================================
@@ -52,7 +38,7 @@ const inputSchema = z.object({
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-  duration: z
+  durationMinutes: z
     .number()
     .int("Duration must be a whole number of minutes")
     .min(1, "Duration must be at least 1 minute")
@@ -62,10 +48,17 @@ const inputSchema = z.object({
     .string()
     .max(10000, "Notes cannot exceed 10,000 characters")
     .optional(),
-  goalsAddressed: z
-    .array(z.uuid("Invalid goal ID format"))
+  goalsWorkedOn: z
+    .array(
+      z.object({
+        goalId: z.uuid("Invalid goal ID format"),
+        progress: z.number().int().min(0).max(100).optional(),
+        notes: z.string().max(1000).optional(),
+      })
+    )
     .max(20, "Cannot address more than 20 goals in a single session")
     .optional(),
+  therapistId: z.uuid("Invalid therapist ID format").optional(),
 });
 
 type CreateSessionInput = z.infer<typeof inputSchema>;
@@ -81,22 +74,23 @@ async function createSession(
   // 1. Verify authorization
   await verifyChildAccess(input.childId, context);
 
-  // 2. Validate date is not in the future (sessions should be logged, not scheduled)
+  // 2. Validate date is not in the future
   const sessionDate = new Date(input.date);
   const today = new Date();
-  today.setHours(23, 59, 59, 999); // End of today
-  
+  today.setHours(23, 59, 59, 999);
+
   if (sessionDate > today) {
     return {
       success: false,
-      error: "Cannot create a session with a future date. Sessions should be logged after they occur.",
+      error:
+        "Cannot create a session with a future date. Sessions should be logged after they occur.",
     };
   }
 
-  // 3. Validate date is not too far in the past (configurable, default 1 year)
+  // 3. Validate date is not too far in the past (1 year max)
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  
+
   if (sessionDate < oneYearAgo) {
     return {
       success: false,
@@ -104,41 +98,54 @@ async function createSession(
     };
   }
 
-  // TODO: Validate goalsAddressed IDs exist and belong to the child
-  // This will be implemented when the goals table exists
+  // 4. Validate goalsWorkedOn IDs exist and belong to the child
+  if (input.goalsWorkedOn && input.goalsWorkedOn.length > 0) {
+    const goalIds = input.goalsWorkedOn.map((g) => g.goalId);
+    const existingGoals = await db
+      .select({ id: goals.id })
+      .from(goals)
+      .where(
+        and(eq(goals.childId, input.childId), inArray(goals.id, goalIds))
+      );
 
-  // TODO: Create session in database once table exists
-  // const { db } = await import("@/db");
-  // const { sessions } = await import("@/db/schema");
-  //
-  // const [session] = await db.insert(sessions).values({
-  //   childId: input.childId,
-  //   type: input.type,
-  //   date: input.date,
-  //   duration: input.duration ?? null,
-  //   notes: input.notes ?? null,
-  //   goalsAddressed: input.goalsAddressed ?? [],
-  // }).returning();
+    const foundIds = new Set(existingGoals.map((g) => g.id));
+    const missingIds = goalIds.filter((id) => !foundIds.has(id));
 
-  // Return mock data for MVP
-  const now = new Date().toISOString();
-  const mockSession: CreatedSession = {
-    id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    childId: input.childId,
-    type: input.type,
-    date: input.date,
-    duration: input.duration ?? null,
-    notes: input.notes ?? null,
-    goalsAddressed: input.goalsAddressed ?? [],
-    createdAt: now,
-    updatedAt: now,
-    _mock: true,
-  };
+    if (missingIds.length > 0) {
+      return {
+        success: false,
+        error: `Goals not found or don't belong to this child: ${missingIds.join(", ")}`,
+      };
+    }
+  }
+
+  // 5. Create session in database
+  const [session] = await db
+    .insert(therapySessions)
+    .values({
+      childId: input.childId,
+      therapistId: input.therapistId ?? null,
+      therapyType: input.type.toLowerCase(),
+      sessionDate: input.date,
+      durationMinutes: input.durationMinutes ?? null,
+      notes: input.notes ?? null,
+      goalsWorkedOn: input.goalsWorkedOn ?? null,
+    })
+    .returning();
 
   return {
     success: true,
     data: {
-      session: mockSession,
+      session: {
+        id: session.id,
+        childId: session.childId,
+        type: input.type,
+        date: session.sessionDate,
+        durationMinutes: session.durationMinutes,
+        notes: session.notes,
+        goalsWorkedOn: (session.goalsWorkedOn as CreatedSession["goalsWorkedOn"]) ?? [],
+        createdAt: session.createdAt.toISOString(),
+      },
       message: `Successfully logged ${input.type} session for ${input.date}`,
     },
   };
@@ -151,7 +158,7 @@ async function createSession(
 export const createSessionTool: Tool<CreateSessionInput> = {
   name: "create_session",
   description:
-    "Log a new therapy session. The AI should confirm session details with the user before calling this. Creates a record of a therapy session including the date, type (ABA, OT, SLP, other), duration, notes, and which goals were addressed.",
+    "Log a new therapy session. The AI should confirm session details with the user before calling this. Creates a record of a therapy session including the date, type (ABA, OT, SLP, other), duration, notes, and which goals were worked on.",
   inputSchema,
   execute: createSession,
 };

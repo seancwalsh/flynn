@@ -127,8 +127,27 @@ export async function getAccessibleChildIds(context: ToolContext): Promise<strin
   }
 
   // Get children where user is an assigned therapist
-  // TODO: Need to join through therapists table using email
-  // For now, if familyId is in context, use that
+  const { therapists, therapistClients } = await import("@/db/schema");
+  
+  const therapist = await db.query.therapists.findFirst({
+    where: eq(therapists.email, context.userId),
+    columns: { id: true },
+  });
+
+  if (therapist) {
+    const assignedChildren = await db
+      .select({ childId: therapistClients.childId })
+      .from(therapistClients)
+      .where(eq(therapistClients.therapistId, therapist.id)) as { childId: string }[];
+
+    for (const assignment of assignedChildren) {
+      if (!accessibleChildIds.includes(assignment.childId)) {
+        accessibleChildIds.push(assignment.childId);
+      }
+    }
+  }
+
+  // Fallback: if familyId is in context, also include those children
   if (context.familyId) {
     const contextFamilyChildren = await db
       .select({ id: children.id })

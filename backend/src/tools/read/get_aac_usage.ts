@@ -46,7 +46,7 @@ export interface SymbolUsage {
   symbolId: string;
   count: number;
   lastUsedAt: string;
-  // TODO: Add symbol metadata once symbols table exists
+  // Symbol metadata available after iOS CloudKit sync:
   // symbolName?: string;
   // category?: string;
   // imageUrl?: string;
@@ -252,7 +252,7 @@ async function getBreakdown(
   }
 
   // groupBy === "category"
-  // TODO: Once symbols table exists, join to get category
+  // Category grouping requires symbols table sync from iOS CloudKit
   // For now, extract category from symbolId if it contains a prefix
   const result = await db
     .select({

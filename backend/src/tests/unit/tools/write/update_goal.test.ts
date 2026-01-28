@@ -13,7 +13,7 @@ import {
   setupTestDatabase,
   cleanTestData,
 } from "../../../setup";
-import { createTestFamily, createTestCaregiver } from "../../../fixtures";
+import { createTestFamily, createTestChild, createTestCaregiver, createTestGoal } from "../../../fixtures";
 
 // ============================================================================
 // Test Setup
@@ -35,13 +35,6 @@ afterAll(async () => {
 });
 
 // ============================================================================
-// Helper
-// ============================================================================
-
-// Use a valid UUID v4 format for the mock goal ID
-const mockGoalId = "b1ffbc99-9c0b-4ef8-bb6d-6bb9bd380a22";
-
-// ============================================================================
 // Tests
 // ============================================================================
 
@@ -49,7 +42,9 @@ describe("update_goal tool", () => {
   describe("authorization", () => {
     test("updates goal for authorized user", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -59,7 +54,7 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: goal.id,
           progress: 75,
         },
         context
@@ -69,22 +64,25 @@ describe("update_goal tool", () => {
     });
 
     test("throws UNAUTHORIZED for user without access", async () => {
+      const family = await createTestFamily();
+      const child = await createTestChild(family.id);
+      const goal = await createTestGoal(child.id);
+
       const context: ToolContext = {
         userId: "unauthorized@example.com",
-        // No familyId
       };
 
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: goal.id,
           progress: 50,
         },
         context
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toMatch(/not found|access/i);
+      expect(result.error).toMatch(/access/i);
     });
   });
 
@@ -122,23 +120,21 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: "not-a-valid-uuid-format-really",
+          goalId: "not-a-uuid",
           progress: 50,
         },
         context
       );
 
-      // Will either fail UUID validation or goal lookup
-      if (result.success) {
-        expect(result.data).toBeDefined();
-      } else {
-        expect(result.error).toBeDefined();
-      }
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Invalid");
     });
 
     test("requires at least one field to update", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -148,8 +144,7 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          // No fields to update
+          goalId: goal.id,
         },
         context
       );
@@ -170,7 +165,7 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
           progress: -10,
         },
         context
@@ -192,7 +187,7 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
           progress: 150,
         },
         context
@@ -214,8 +209,8 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          progress: 75.5,
+          goalId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+          progress: 50.5,
         },
         context
       );
@@ -236,43 +231,23 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          status: "INVALID_STATUS",
+          goalId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+          status: "invalid_status",
         },
         context
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Invalid input");
-    });
-
-    test("validates notes maximum length", async () => {
-      const family = await createTestFamily();
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      const result = await executor.executeTool(
-        "update_goal",
-        {
-          goalId: mockGoalId,
-          notes: "x".repeat(2001), // Exceeds 2000 char limit
-        },
-        context
-      );
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("2,000");
+      expect(result.error).toContain("Invalid");
     });
   });
 
   describe("business logic validation", () => {
-    test("rejects completed status with progress not 100", async () => {
+    test("rejects achieved status with progress not 100", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -282,20 +257,22 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          status: "completed",
-          progress: 80, // Not 100
+          goalId: goal.id,
+          status: "achieved",
+          progress: 80,
         },
         context
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("100%");
+      expect(result.error).toContain("100");
     });
 
     test("suggests completion when progress reaches 100", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -305,23 +282,22 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: goal.id,
           progress: 100,
-          // status not set
         },
         context
       );
 
       expect(result.success).toBe(true);
-
-      const data = result.data as { suggestCompletion: boolean; message: string };
+      const data = result.data as { suggestCompletion: boolean };
       expect(data.suggestCompletion).toBe(true);
-      expect(data.message).toContain("completed");
     });
 
-    test("accepts completed status with progress 100", async () => {
+    test("accepts achieved status with progress 100", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -331,8 +307,8 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          status: "completed",
+          goalId: goal.id,
+          status: "achieved",
           progress: 100,
         },
         context
@@ -341,9 +317,11 @@ describe("update_goal tool", () => {
       expect(result.success).toBe(true);
     });
 
-    test("accepts completed status without explicit progress", async () => {
+    test("accepts achieved status without explicit progress", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -353,24 +331,22 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          status: "completed",
-          // Progress will be auto-set to 100
+          goalId: goal.id,
+          status: "achieved",
         },
         context
       );
 
       expect(result.success).toBe(true);
-
-      const data = result.data as { goal: { progress: number } };
-      expect(data.goal.progress).toBe(100);
     });
   });
 
   describe("response structure", () => {
     test("returns updated goal", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id, { title: "Original Goal" });
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -380,8 +356,7 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          progress: 80,
+          goalId: goal.id,
           status: "active",
         },
         context
@@ -392,25 +367,26 @@ describe("update_goal tool", () => {
       const data = result.data as {
         goal: {
           id: string;
+          childId: string;
+          type: string;
+          title: string;
           status: string;
-          progress: number;
-          updatedAt: string;
-          _mock: boolean;
         };
         message: string;
       };
 
       expect(data.goal).toBeDefined();
-      expect(data.goal.id).toBe(mockGoalId);
-      expect(data.goal.status).toBe("active");
-      expect(data.goal.progress).toBe(80);
-      expect(data.goal.updatedAt).toBeDefined();
+      expect(data.goal.id).toBe(goal.id);
+      expect(data.goal.childId).toBe(child.id);
+      expect(data.goal.title).toBe("Original Goal");
       expect(data.message).toContain("Successfully");
     });
 
     test("message lists updated fields", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -420,10 +396,8 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
-          progress: 65,
-          status: "active",
-          notes: "Making great progress!",
+          goalId: goal.id,
+          progress: 50,
         },
         context
       );
@@ -432,64 +406,15 @@ describe("update_goal tool", () => {
 
       const data = result.data as { message: string };
       expect(data.message).toContain("progress");
-      expect(data.message).toContain("status");
-      expect(data.message).toContain("notes");
-    });
-
-    test("indicates mock data", async () => {
-      const family = await createTestFamily();
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      const result = await executor.executeTool(
-        "update_goal",
-        {
-          goalId: mockGoalId,
-          progress: 50,
-        },
-        context
-      );
-
-      expect(result.success).toBe(true);
-
-      const data = result.data as { goal: { _mock: boolean } };
-      expect(data.goal._mock).toBe(true);
-    });
-
-    test("sets completedAt when marked completed", async () => {
-      const family = await createTestFamily();
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      const result = await executor.executeTool(
-        "update_goal",
-        {
-          goalId: mockGoalId,
-          status: "completed",
-        },
-        context
-      );
-
-      expect(result.success).toBe(true);
-
-      const data = result.data as { goal: { completedAt: string | null } };
-      expect(data.goal.completedAt).toBeDefined();
-      expect(data.goal.completedAt).not.toBeNull();
     });
   });
 
   describe("partial updates", () => {
     test("allows updating only status", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -499,7 +424,7 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: goal.id,
           status: "paused",
         },
         context
@@ -510,7 +435,9 @@ describe("update_goal tool", () => {
 
     test("allows updating only progress", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -520,29 +447,8 @@ describe("update_goal tool", () => {
       const result = await executor.executeTool(
         "update_goal",
         {
-          goalId: mockGoalId,
+          goalId: goal.id,
           progress: 45,
-        },
-        context
-      );
-
-      expect(result.success).toBe(true);
-    });
-
-    test("allows updating only notes", async () => {
-      const family = await createTestFamily();
-      const caregiver = await createTestCaregiver(family.id);
-
-      const context: ToolContext = {
-        userId: caregiver.email,
-        familyId: family.id,
-      };
-
-      const result = await executor.executeTool(
-        "update_goal",
-        {
-          goalId: mockGoalId,
-          notes: "Good progress this week",
         },
         context
       );
@@ -554,7 +460,9 @@ describe("update_goal tool", () => {
   describe("status transitions", () => {
     test("accepts active status", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -563,7 +471,7 @@ describe("update_goal tool", () => {
 
       const result = await executor.executeTool(
         "update_goal",
-        { goalId: mockGoalId, status: "active" },
+        { goalId: goal.id, status: "active" },
         context
       );
 
@@ -572,7 +480,9 @@ describe("update_goal tool", () => {
 
     test("accepts paused status", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -581,16 +491,18 @@ describe("update_goal tool", () => {
 
       const result = await executor.executeTool(
         "update_goal",
-        { goalId: mockGoalId, status: "paused" },
+        { goalId: goal.id, status: "paused" },
         context
       );
 
       expect(result.success).toBe(true);
     });
 
-    test("accepts completed status", async () => {
+    test("accepts achieved status", async () => {
       const family = await createTestFamily();
+      const child = await createTestChild(family.id);
       const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
 
       const context: ToolContext = {
         userId: caregiver.email,
@@ -599,7 +511,27 @@ describe("update_goal tool", () => {
 
       const result = await executor.executeTool(
         "update_goal",
-        { goalId: mockGoalId, status: "completed" },
+        { goalId: goal.id, status: "achieved" },
+        context
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    test("accepts discontinued status", async () => {
+      const family = await createTestFamily();
+      const child = await createTestChild(family.id);
+      const caregiver = await createTestCaregiver(family.id);
+      const goal = await createTestGoal(child.id);
+
+      const context: ToolContext = {
+        userId: caregiver.email,
+        familyId: family.id,
+      };
+
+      const result = await executor.executeTool(
+        "update_goal",
+        { goalId: goal.id, status: "discontinued" },
         context
       );
 

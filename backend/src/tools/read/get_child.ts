@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod/v4";
-import { eq } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { createReadOnlyTool } from "@/services/tool-executor";
 import type { ToolContext } from "@/types/claude";
 import { verifyChildAccess } from "../authorization";
@@ -70,7 +70,7 @@ async function getChild(
 
   // Import db dynamically to avoid circular deps and for test injection
   const { db } = await import("@/db");
-  const { children, therapists, therapistClients, usageLogs } = await import("@/db/schema");
+  const { children, therapists, therapistClients, usageLogs, goals } = await import("@/db/schema");
 
   // Fetch the child with related data
   const child = await db.query.children.findFirst({
@@ -99,8 +99,11 @@ async function getChild(
       therapistEmail: string;
     }>;
 
-  // Count active goals - TODO: Goals table doesn't exist yet
-  const activeGoalsCount = 0;
+  // Count active goals
+  const [{ activeGoalsCount }] = await db
+    .select({ activeGoalsCount: count() })
+    .from(goals)
+    .where(and(eq(goals.childId, input.childId), eq(goals.status, "active")));
 
   // Count unique symbols used
   const symbolUsage = await db
