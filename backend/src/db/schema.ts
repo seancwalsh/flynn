@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, date, jsonb, primaryKey, integer, text } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, date, jsonb, primaryKey, integer, text, numeric, unique, index, boolean } from "drizzle-orm/pg-core";
 
 // Users - authenticated users (via Clerk)
 export const users = pgTable("users", {
@@ -158,3 +158,162 @@ export type NewConversation = typeof conversations.$inferInsert;
 
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 export type NewConversationMessage = typeof conversationMessages.$inferInsert;
+
+// ============================================================================
+// METRICS AGGREGATION TABLES (Phase 2 - Proactive Insights)
+// ============================================================================
+
+// Pre-computed daily metrics for fast querying and anomaly detection
+export const dailyMetrics = pgTable("daily_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  date: date("date").notNull(),
+  
+  // Usage metrics
+  totalTaps: integer("total_taps").notNull().default(0),
+  uniqueSymbols: integer("unique_symbols").notNull().default(0),
+  uniqueCategories: integer("unique_categories").notNull().default(0),
+  sessionCount: integer("session_count").notNull().default(0),
+  avgSessionLengthSeconds: integer("avg_session_length_seconds"),
+  totalSessionSeconds: integer("total_session_seconds").default(0),
+  
+  // Phrase metrics
+  phrasesBuilt: integer("phrases_built").notNull().default(0),
+  avgPhraseLength: numeric("avg_phrase_length", { precision: 4, scale: 2 }),
+  maxPhraseLength: integer("max_phrase_length"),
+  
+  // Language metrics (bilingual support)
+  bulgarianTaps: integer("bulgarian_taps").notNull().default(0),
+  englishTaps: integer("english_taps").notNull().default(0),
+  
+  // Category breakdown (stored as JSON: {category: count})
+  categoryBreakdown: jsonb("category_breakdown"),
+  
+  // Time distribution (24 hourly buckets)
+  hourlyDistribution: jsonb("hourly_distribution"), // [count0, count1, ..., count23]
+  
+  // Top vocabulary for the day
+  topSymbols: jsonb("top_symbols"), // [{symbolId, label, count}]
+  newSymbolsUsed: jsonb("new_symbols_used"), // First-time symbol uses
+  
+  // Metadata
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (table) => [
+  unique("daily_metrics_child_date_unique").on(table.childId, table.date),
+  index("daily_metrics_child_date_idx").on(table.childId, table.date),
+  index("daily_metrics_date_idx").on(table.date),
+]);
+
+// Weekly rollups for trend analysis
+export const weeklyMetrics = pgTable("weekly_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  weekStart: date("week_start").notNull(), // Monday of the week
+  
+  // Aggregated from daily
+  totalTaps: integer("total_taps").notNull().default(0),
+  avgDailyTaps: numeric("avg_daily_taps", { precision: 6, scale: 2 }),
+  activeDays: integer("active_days").notNull().default(0),
+  
+  // Vocabulary growth
+  totalUniqueSymbols: integer("total_unique_symbols").notNull().default(0),
+  newSymbolsThisWeek: integer("new_symbols_this_week").notNull().default(0),
+  vocabularyGrowthRate: numeric("vocabulary_growth_rate", { precision: 5, scale: 4 }),
+  
+  // Session patterns
+  avgSessionsPerDay: numeric("avg_sessions_per_day", { precision: 4, scale: 2 }),
+  totalSessions: integer("total_sessions").notNull().default(0),
+  peakUsageHour: integer("peak_usage_hour"), // 0-23
+  weekendVsWeekdayRatio: numeric("weekend_weekday_ratio", { precision: 4, scale: 3 }),
+  
+  // Week-over-week comparison
+  tapChangePercent: numeric("tap_change_percent", { precision: 5, scale: 2 }),
+  vocabularyChangePercent: numeric("vocabulary_change_percent", { precision: 5, scale: 2 }),
+  
+  // Metadata
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (table) => [
+  unique("weekly_metrics_child_week_unique").on(table.childId, table.weekStart),
+  index("weekly_metrics_child_week_idx").on(table.childId, table.weekStart),
+]);
+
+// Rolling baselines for anomaly detection
+export const metricBaselines = pgTable("metric_baselines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  metricName: varchar("metric_name", { length: 50 }).notNull(), // total_taps, unique_symbols, session_count, etc.
+  
+  // Statistical measures (calculated from rolling 28-day window)
+  mean: numeric("mean", { precision: 10, scale: 4 }).notNull(),
+  median: numeric("median", { precision: 10, scale: 4 }).notNull(),
+  stdDev: numeric("std_dev", { precision: 10, scale: 4 }).notNull(),
+  min: numeric("min_value", { precision: 10, scale: 4 }),
+  max: numeric("max_value", { precision: 10, scale: 4 }),
+  
+  // Day-of-week adjustments (JSON: {mon: multiplier, tue: multiplier, ...})
+  dayOfWeekFactors: jsonb("day_of_week_factors"),
+  
+  // Sample size and date range
+  sampleDays: integer("sample_days").notNull(),
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+  
+  // Metadata
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (table) => [
+  unique("metric_baselines_child_metric_unique").on(table.childId, table.metricName),
+  index("metric_baselines_child_idx").on(table.childId),
+]);
+
+// Detected anomalies for review and alerting
+export const anomalies = pgTable("anomalies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  // Anomaly details
+  type: varchar("type", { length: 50 }).notNull(), // usage_drop, vocabulary_regression, session_drop, etc.
+  severity: varchar("severity", { length: 20 }).notNull(), // info, warning, critical
+  metricName: varchar("metric_name", { length: 50 }).notNull(),
+  
+  // Values
+  expectedValue: numeric("expected_value", { precision: 10, scale: 4 }).notNull(),
+  actualValue: numeric("actual_value", { precision: 10, scale: 4 }).notNull(),
+  deviationScore: numeric("deviation_score", { precision: 6, scale: 4 }).notNull(), // Z-score or similar
+  
+  // Context
+  context: jsonb("context"), // Additional context data
+  detectedAt: timestamp("detected_at").defaultNow().notNull(),
+  detectedForDate: date("detected_for_date").notNull(),
+  
+  // Resolution tracking
+  acknowledged: boolean("acknowledged").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: uuid("acknowledged_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: varchar("resolution", { length: 255 }),
+}, (table) => [
+  index("anomalies_child_date_idx").on(table.childId, table.detectedForDate),
+  index("anomalies_severity_idx").on(table.severity),
+  index("anomalies_unacknowledged_idx").on(table.childId, table.acknowledged),
+]);
+
+// Type exports for metrics tables
+export type DailyMetric = typeof dailyMetrics.$inferSelect;
+export type NewDailyMetric = typeof dailyMetrics.$inferInsert;
+
+export type WeeklyMetric = typeof weeklyMetrics.$inferSelect;
+export type NewWeeklyMetric = typeof weeklyMetrics.$inferInsert;
+
+export type MetricBaseline = typeof metricBaselines.$inferSelect;
+export type NewMetricBaseline = typeof metricBaselines.$inferInsert;
+
+export type Anomaly = typeof anomalies.$inferSelect;
+export type NewAnomaly = typeof anomalies.$inferInsert;
