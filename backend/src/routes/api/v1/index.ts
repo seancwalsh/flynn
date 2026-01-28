@@ -6,6 +6,7 @@ import { therapistsRoutes } from "./therapists";
 import { usageLogsRoutes } from "./usage-logs";
 import { insightsRoutes } from "./insights";
 import { conversationsRoutes } from "./conversations";
+import { notificationsRoutes } from "./notifications";
 
 export const apiV1Routes = new Hono();
 
@@ -17,6 +18,7 @@ apiV1Routes.route("/therapists", therapistsRoutes);
 apiV1Routes.route("/usage-logs", usageLogsRoutes);
 apiV1Routes.route("/insights", insightsRoutes);
 apiV1Routes.route("/conversations", conversationsRoutes);
+apiV1Routes.route("/notifications", notificationsRoutes);
 
 // API info endpoint
 apiV1Routes.get("/", (c) => {

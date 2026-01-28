@@ -242,6 +242,11 @@ export const weeklyMetrics = pgTable("weekly_metrics", {
   tapChangePercent: numeric("tap_change_percent", { precision: 5, scale: 2 }),
   vocabularyChangePercent: numeric("vocabulary_change_percent", { precision: 5, scale: 2 }),
   
+  // Trend analysis (based on 4-week rolling comparison)
+  tapsTrend: varchar("taps_trend", { length: 20 }), // improving, stable, declining
+  vocabularyTrend: varchar("vocabulary_trend", { length: 20 }),
+  overallTrend: varchar("overall_trend", { length: 20 }),
+  
   // Metadata
   computedAt: timestamp("computed_at").defaultNow().notNull(),
 }, (table) => [
@@ -325,3 +330,63 @@ export type NewMetricBaseline = typeof metricBaselines.$inferInsert;
 
 export type Anomaly = typeof anomalies.$inferSelect;
 export type NewAnomaly = typeof anomalies.$inferInsert;
+
+// Notification preferences per user
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
+  
+  // Master switch
+  enabled: boolean("enabled").notNull().default(true),
+  
+  // Per-type settings (JSON: {daily_digest: true, anomaly_warning: true, ...})
+  typeSettings: jsonb("type_settings"),
+  
+  // Quiet hours
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(true),
+  quietHoursStart: varchar("quiet_hours_start", { length: 5 }).default("22:00"), // HH:MM
+  quietHoursEnd: varchar("quiet_hours_end", { length: 5 }).default("07:00"),
+  timezone: varchar("timezone", { length: 50 }).default("UTC"),
+  
+  // Frequency limits
+  maxPerHour: integer("max_per_hour").default(5),
+  maxPerDay: integer("max_per_day").default(20),
+  
+  // Metadata
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Notification log for history/debugging
+export const notificationLogs = pgTable("notification_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  
+  // Delivery status
+  success: boolean("success").notNull(),
+  error: text("error"),
+  messageId: varchar("message_id", { length: 255 }),
+  
+  // Related entities
+  insightId: uuid("insight_id").references(() => insights.id, { onDelete: "set null" }),
+  childId: uuid("child_id").references(() => children.id, { onDelete: "set null" }),
+  
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => [
+  index("notification_logs_user_idx").on(table.userId),
+  index("notification_logs_sent_idx").on(table.sentAt),
+]);
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+export type NotificationLog = typeof notificationLogs.$inferSelect;
+export type NewNotificationLog = typeof notificationLogs.$inferInsert;

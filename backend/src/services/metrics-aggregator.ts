@@ -19,7 +19,7 @@ import {
   type NewWeeklyMetric,
   type NewMetricBaseline,
 } from "../db/schema";
-import { eq, and, gte, lt, sql, desc, count } from "drizzle-orm";
+import { eq, and, gte, lt, desc } from "drizzle-orm";
 import { logger } from "../utils/logger";
 
 // ============================================================================
@@ -263,33 +263,51 @@ export async function aggregateWeeklyMetrics(
   const totalSessions = dailyData.reduce((sum, d) => sum + (d.sessionCount || 0), 0);
   const avgSessionsPerDay = activeDays > 0 ? totalSessions / activeDays : 0;
 
-  // Get previous week for comparison
-  const prevWeekStart = new Date(monday.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const prevWeekData = await db
+  // Get previous 4 weeks for trend analysis
+  const fourWeeksAgo = new Date(monday.getTime() - 28 * 24 * 60 * 60 * 1000);
+  const prevWeeksData = await db
     .select()
     .from(weeklyMetrics)
     .where(
       and(
         eq(weeklyMetrics.childId, childId),
-        eq(weeklyMetrics.weekStart, prevWeekStart.toISOString().split('T')[0])
+        gte(weeklyMetrics.weekStart, fourWeeksAgo.toISOString().split('T')[0]),
+        lt(weeklyMetrics.weekStart, weekStartStr)
       )
     )
-    .limit(1);
+    .orderBy(desc(weeklyMetrics.weekStart));
 
   let tapChangePercent: number | null = null;
   let vocabularyChangePercent: number | null = null;
+  let tapsTrend: string = 'stable';
+  let vocabularyTrend: string = 'stable';
   
-  if (prevWeekData.length > 0 && prevWeekData[0].totalTaps) {
-    const prevTaps = prevWeekData[0].totalTaps;
-    if (prevTaps > 0) {
+  if (prevWeeksData.length > 0) {
+    const prevWeek = prevWeeksData[0];
+    const prevTaps = prevWeek.totalTaps;
+    if (prevTaps && prevTaps > 0) {
       tapChangePercent = ((totalTaps - prevTaps) / prevTaps) * 100;
     }
     
-    const prevVocab = prevWeekData[0].totalUniqueSymbols;
+    const prevVocab = prevWeek.totalUniqueSymbols;
     if (prevVocab && prevVocab > 0) {
       vocabularyChangePercent = ((allSymbols.size - prevVocab) / prevVocab) * 100;
     }
   }
+
+  // Calculate trends based on 4-week rolling data
+  if (prevWeeksData.length >= 2) {
+    const tapValues = [totalTaps, ...prevWeeksData.map(w => w.totalTaps || 0)];
+    const vocabValues = [allSymbols.size, ...prevWeeksData.map(w => w.totalUniqueSymbols || 0)];
+    
+    tapsTrend = calculateTrend(tapValues);
+    vocabularyTrend = calculateTrend(vocabValues);
+  }
+  
+  // Overall trend is declining if either is declining, improving if both improving, else stable
+  const overallTrend = 
+    tapsTrend === 'declining' || vocabularyTrend === 'declining' ? 'declining' :
+    tapsTrend === 'improving' && vocabularyTrend === 'improving' ? 'improving' : 'stable';
 
   // Upsert weekly metrics
   await db
@@ -307,6 +325,9 @@ export async function aggregateWeeklyMetrics(
       peakUsageHour,
       tapChangePercent: tapChangePercent?.toFixed(2) ?? null,
       vocabularyChangePercent: vocabularyChangePercent?.toFixed(2) ?? null,
+      tapsTrend,
+      vocabularyTrend,
+      overallTrend,
       computedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -322,6 +343,9 @@ export async function aggregateWeeklyMetrics(
         peakUsageHour,
         tapChangePercent: tapChangePercent?.toFixed(2) ?? null,
         vocabularyChangePercent: vocabularyChangePercent?.toFixed(2) ?? null,
+        tapsTrend,
+        vocabularyTrend,
+        overallTrend,
         computedAt: new Date(),
       },
     });
@@ -514,6 +538,27 @@ function getMonday(date: Date): Date {
   d.setUTCDate(diff);
   d.setUTCHours(0, 0, 0, 0);
   return d;
+}
+
+/**
+ * Calculate trend direction from an array of values (most recent first)
+ * Uses simple linear regression slope
+ */
+function calculateTrend(values: number[]): 'improving' | 'stable' | 'declining' {
+  if (values.length < 2) return 'stable';
+  
+  // Simple approach: compare recent average to older average
+  const recentAvg = values.slice(0, 2).reduce((a, b) => a + b, 0) / 2;
+  const olderAvg = values.slice(2).reduce((a, b) => a + b, 0) / Math.max(1, values.length - 2);
+  
+  if (olderAvg === 0) return recentAvg > 0 ? 'improving' : 'stable';
+  
+  const changePercent = ((recentAvg - olderAvg) / olderAvg) * 100;
+  
+  // Threshold: 10% change for trend classification
+  if (changePercent > 10) return 'improving';
+  if (changePercent < -10) return 'declining';
+  return 'stable';
 }
 
 export const metricsAggregator = {
