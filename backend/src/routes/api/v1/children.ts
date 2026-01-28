@@ -3,8 +3,14 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
 import { db } from "../../../db";
 import { children } from "../../../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
+import { 
+  requireChildAccess, 
+  requireFamilyAccess, 
+  filterAccessibleChildren 
+} from "../../../middleware/authorization";
+import { canAccessFamily } from "../../../services/authorization";
 
 export const childrenRoutes = new Hono();
 
@@ -19,11 +25,24 @@ const updateChildSchema = z.object({
   birthDate: z.string().date().optional(),
 });
 
-// List all children
-childrenRoutes.get("/", async (c) => {
+// List children (filtered by authorization)
+childrenRoutes.get("/", filterAccessibleChildren(), async (c) => {
   const familyId = c.req.query("familyId");
+  const accessibleChildIds = c.get("accessibleChildIds");
+  const user = c.get("user");
   
+  // If no accessible children, return empty
+  if (accessibleChildIds.length === 0 && user.role !== "admin") {
+    return c.json({ data: [] });
+  }
+  
+  // If filtering by family, verify access to that family first
   if (familyId) {
+    const hasAccess = await canAccessFamily(user, familyId);
+    if (!hasAccess) {
+      throw new AppError("You don't have access to this family", 403, "FORBIDDEN");
+    }
+    
     const familyChildren = await db
       .select()
       .from(children)
@@ -31,12 +50,21 @@ childrenRoutes.get("/", async (c) => {
     return c.json({ data: familyChildren });
   }
   
-  const allChildren = await db.select().from(children);
-  return c.json({ data: allChildren });
+  // Return only accessible children
+  if (user.role === "admin") {
+    const allChildren = await db.select().from(children);
+    return c.json({ data: allChildren });
+  }
+  
+  const accessibleChildren = await db
+    .select()
+    .from(children)
+    .where(inArray(children.id, accessibleChildIds));
+  return c.json({ data: accessibleChildren });
 });
 
-// Get single child
-childrenRoutes.get("/:id", async (c) => {
+// Get single child (with authorization)
+childrenRoutes.get("/:id", requireChildAccess(), async (c) => {
   const id = c.req.param("id");
   const [child] = await db.select().from(children).where(eq(children.id, id));
   
@@ -47,9 +75,16 @@ childrenRoutes.get("/:id", async (c) => {
   return c.json({ data: child });
 });
 
-// Create child
+// Create child (must have access to target family)
 childrenRoutes.post("/", zValidator("json", createChildSchema), async (c) => {
   const body = c.req.valid("json");
+  const user = c.get("user");
+  
+  // Verify user has access to the target family
+  const hasAccess = await canAccessFamily(user, body.familyId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this family", 403, "FORBIDDEN");
+  }
   
   const [child] = await db.insert(children).values({
     familyId: body.familyId,
@@ -60,8 +95,8 @@ childrenRoutes.post("/", zValidator("json", createChildSchema), async (c) => {
   return c.json({ data: child }, 201);
 });
 
-// Update child
-childrenRoutes.patch("/:id", zValidator("json", updateChildSchema), async (c) => {
+// Update child (with authorization)
+childrenRoutes.patch("/:id", requireChildAccess(), zValidator("json", updateChildSchema), async (c) => {
   const id = c.req.param("id");
   const body = c.req.valid("json");
   
@@ -78,8 +113,8 @@ childrenRoutes.patch("/:id", zValidator("json", updateChildSchema), async (c) =>
   return c.json({ data: child });
 });
 
-// Delete child
-childrenRoutes.delete("/:id", async (c) => {
+// Delete child (with authorization)
+childrenRoutes.delete("/:id", requireChildAccess(), async (c) => {
   const id = c.req.param("id");
   
   const [deleted] = await db

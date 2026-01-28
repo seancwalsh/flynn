@@ -3,8 +3,10 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
 import { db } from "../../../db";
 import { families } from "../../../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
+import { requireFamilyAccess, requireAdmin, setUserFamilyContext } from "../../../middleware/authorization";
+import { getUserFamilyId, canAccessFamily } from "../../../services/authorization";
 
 export const familiesRoutes = new Hono();
 
@@ -16,14 +18,28 @@ const updateFamilySchema = z.object({
   name: z.string().min(1).max(255).optional(),
 });
 
-// List all families
+// List families (caregivers see their family, admins see all)
 familiesRoutes.get("/", async (c) => {
-  const allFamilies = await db.select().from(families);
-  return c.json({ data: allFamilies });
+  const user = c.get("user");
+  
+  // Admins see all families
+  if (user.role === "admin") {
+    const allFamilies = await db.select().from(families);
+    return c.json({ data: allFamilies });
+  }
+  
+  // Caregivers see only their family
+  const familyId = await getUserFamilyId(user);
+  if (!familyId) {
+    return c.json({ data: [] });
+  }
+  
+  const [family] = await db.select().from(families).where(eq(families.id, familyId));
+  return c.json({ data: family ? [family] : [] });
 });
 
-// Get single family
-familiesRoutes.get("/:id", async (c) => {
+// Get single family (with authorization)
+familiesRoutes.get("/:id", requireFamilyAccess(), async (c) => {
   const id = c.req.param("id");
   const [family] = await db.select().from(families).where(eq(families.id, id));
   
@@ -34,8 +50,8 @@ familiesRoutes.get("/:id", async (c) => {
   return c.json({ data: family });
 });
 
-// Create family
-familiesRoutes.post("/", zValidator("json", createFamilySchema), async (c) => {
+// Create family (admin only - families are created during onboarding)
+familiesRoutes.post("/", requireAdmin(), zValidator("json", createFamilySchema), async (c) => {
   const body = c.req.valid("json");
   
   const [family] = await db.insert(families).values({
@@ -45,8 +61,8 @@ familiesRoutes.post("/", zValidator("json", createFamilySchema), async (c) => {
   return c.json({ data: family }, 201);
 });
 
-// Update family
-familiesRoutes.patch("/:id", zValidator("json", updateFamilySchema), async (c) => {
+// Update family (with authorization)
+familiesRoutes.patch("/:id", requireFamilyAccess(), zValidator("json", updateFamilySchema), async (c) => {
   const id = c.req.param("id");
   const body = c.req.valid("json");
   
@@ -63,8 +79,8 @@ familiesRoutes.patch("/:id", zValidator("json", updateFamilySchema), async (c) =
   return c.json({ data: family });
 });
 
-// Delete family
-familiesRoutes.delete("/:id", async (c) => {
+// Delete family (admin only)
+familiesRoutes.delete("/:id", requireAdmin(), async (c) => {
   const id = c.req.param("id");
   
   const [deleted] = await db

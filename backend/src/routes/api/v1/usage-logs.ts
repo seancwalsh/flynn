@@ -3,8 +3,10 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
 import { db } from "../../../db";
 import { usageLogs } from "../../../db/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, inArray } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
+import { filterAccessibleChildren, requireChildAccess } from "../../../middleware/authorization";
+import { canAccessChild } from "../../../services/authorization";
 
 export const usageLogsRoutes = new Hono();
 
@@ -23,16 +25,31 @@ const querySchema = z.object({
   limit: z.coerce.number().min(1).max(1000).default(100),
 });
 
-// List usage logs with filtering
-usageLogsRoutes.get("/", zValidator("query", querySchema), async (c) => {
+// List usage logs with filtering (authorized)
+usageLogsRoutes.get("/", filterAccessibleChildren(), zValidator("query", querySchema), async (c) => {
   const query = c.req.valid("query");
+  const user = c.get("user");
+  const accessibleChildIds = c.get("accessibleChildIds");
   
-  let baseQuery = db.select().from(usageLogs);
+  // If no accessible children, return empty
+  if (accessibleChildIds.length === 0 && user.role !== "admin") {
+    return c.json({ data: [] });
+  }
+  
   const conditions = [];
   
+  // If specific child requested, verify access
   if (query.childId) {
+    const hasAccess = await canAccessChild(user, query.childId);
+    if (!hasAccess) {
+      throw new AppError("You don't have access to this child's data", 403, "FORBIDDEN");
+    }
     conditions.push(eq(usageLogs.childId, query.childId));
+  } else if (user.role !== "admin") {
+    // Non-admins only see their accessible children's logs
+    conditions.push(inArray(usageLogs.childId, accessibleChildIds));
   }
+  
   if (query.sessionId) {
     conditions.push(eq(usageLogs.sessionId, query.sessionId));
   }
@@ -43,7 +60,7 @@ usageLogsRoutes.get("/", zValidator("query", querySchema), async (c) => {
     conditions.push(lte(usageLogs.timestamp, new Date(query.to)));
   }
   
-  const results = await baseQuery
+  const results = await db.select().from(usageLogs)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(usageLogs.timestamp))
     .limit(query.limit);
@@ -51,21 +68,36 @@ usageLogsRoutes.get("/", zValidator("query", querySchema), async (c) => {
   return c.json({ data: results });
 });
 
-// Get single usage log
+// Get single usage log (verify access via child)
 usageLogsRoutes.get("/:id", async (c) => {
   const id = c.req.param("id");
+  const user = c.get("user");
+  
   const [log] = await db.select().from(usageLogs).where(eq(usageLogs.id, id));
   
   if (!log) {
     throw new AppError("Usage log not found", 404, "NOT_FOUND");
   }
   
+  // Verify access to the child this log belongs to
+  const hasAccess = await canAccessChild(user, log.childId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this data", 403, "FORBIDDEN");
+  }
+  
   return c.json({ data: log });
 });
 
-// Create usage log (typically called by sync from CloudKit)
+// Create usage log (verify access to child)
 usageLogsRoutes.post("/", zValidator("json", createUsageLogSchema), async (c) => {
   const body = c.req.valid("json");
+  const user = c.get("user");
+  
+  // Verify access to the target child
+  const hasAccess = await canAccessChild(user, body.childId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this child", 403, "FORBIDDEN");
+  }
   
   const [log] = await db.insert(usageLogs).values({
     childId: body.childId,
@@ -77,9 +109,19 @@ usageLogsRoutes.post("/", zValidator("json", createUsageLogSchema), async (c) =>
   return c.json({ data: log }, 201);
 });
 
-// Bulk create usage logs (for sync)
+// Bulk create usage logs (for sync - verify access to all children)
 usageLogsRoutes.post("/bulk", zValidator("json", z.array(createUsageLogSchema)), async (c) => {
   const body = c.req.valid("json");
+  const user = c.get("user");
+  
+  // Verify access to all target children
+  const uniqueChildIds = [...new Set(body.map(l => l.childId))];
+  for (const childId of uniqueChildIds) {
+    const hasAccess = await canAccessChild(user, childId);
+    if (!hasAccess) {
+      throw new AppError(`You don't have access to child ${childId}`, 403, "FORBIDDEN");
+    }
+  }
   
   const logs = await db.insert(usageLogs).values(
     body.map((log) => ({
@@ -93,8 +135,8 @@ usageLogsRoutes.post("/bulk", zValidator("json", z.array(createUsageLogSchema)),
   return c.json({ data: logs, count: logs.length }, 201);
 });
 
-// Get usage statistics for a child
-usageLogsRoutes.get("/stats/:childId", async (c) => {
+// Get usage statistics for a child (with authorization)
+usageLogsRoutes.get("/stats/:childId", requireChildAccess("childId"), async (c) => {
   const childId = c.req.param("childId");
   
   // Get total count
