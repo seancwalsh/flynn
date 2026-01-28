@@ -335,7 +335,10 @@ struct BackButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            HapticManager.shared.navigate()
+            action()
+        }) {
             VStack(spacing: FlynnTheme.Layout.spacing4) {
                 Image(systemName: "chevron.left")
                     .font(.title2.weight(.semibold))

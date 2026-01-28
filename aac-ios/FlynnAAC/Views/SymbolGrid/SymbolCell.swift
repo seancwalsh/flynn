@@ -33,16 +33,19 @@ struct SymbolCell: View {
         )
         .scaleEffect(isPressed && settings.animationsEnabled ? Self.tapScaleValue : 1.0)
         .onTapGesture {
+            HapticManager.shared.symbolTapped()
             triggerTapAnimation()
             onTap()
         }
         .onLongPressGesture(minimumDuration: 0.5, pressing: { pressing in
             if pressing {
+                HapticManager.shared.longPressStarted()
                 withAnimation(.easeOut(duration: 0.1)) {
                     isPressed = true
                 }
             }
         }, perform: {
+            HapticManager.shared.symbolTapped()
             withAnimation(.easeOut(duration: 0.1)) {
                 isPressed = false
             }

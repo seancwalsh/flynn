@@ -38,6 +38,7 @@ struct PhraseBarView: View {
                 HStack(spacing: FlynnTheme.Layout.spacing12) {
                     // Clear button
                     Button(action: {
+                        HapticManager.shared.phraseClear()
                         withAnimation(.bouncy) {
                             onClear()
                         }
@@ -98,6 +99,9 @@ struct PhraseBarView: View {
     private func speakPhrase() {
         guard !phraseItems.isEmpty else { return }
 
+        // Haptic feedback for speaking
+        HapticManager.shared.phraseSpoken()
+
         // Visual feedback
         withAnimation(.easeInOut(duration: 0.25).repeatCount(3)) {
             isPulsing = true
@@ -121,7 +125,10 @@ struct PhraseSymbolCell: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
+        Button(action: {
+            HapticManager.shared.symbolRemoved()
+            onTap()
+        }) {
             VStack(spacing: FlynnTheme.Layout.spacing2) {
                 ARASAACImageView(symbolId: phraseItem.symbol.id)
                     .frame(

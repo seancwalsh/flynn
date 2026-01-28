@@ -10,6 +10,7 @@ struct CategoryCell: View {
 
     var body: some View {
         Button(action: {
+            HapticManager.shared.categoryTapped()
             if settings.animationsEnabled {
                 withAnimation(.easeOut(duration: 0.08)) {
                     isPressed = true
