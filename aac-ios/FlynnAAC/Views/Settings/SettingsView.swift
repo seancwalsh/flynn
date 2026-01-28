@@ -7,9 +7,11 @@ struct SettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.authService) private var authService
+    @StateObject private var preloadService = ImagePreloadService.shared
     @State private var showChangePassphrase = false
     @State private var showDeletePassphraseConfirmation = false
     @State private var showLogoutConfirmation = false
+    @State private var showRefreshImagesConfirmation = false
 
     init(
         settings: Binding<AppSettings>,
@@ -77,6 +79,23 @@ struct SettingsView: View {
 
                 Section("Navigation") {
                     Toggle("Return to home after selection", isOn: $settings.autoReturnToHome)
+                }
+
+                Section {
+                    Button(action: { showRefreshImagesConfirmation = true }) {
+                        HStack {
+                            Label("Refresh Symbol Images", systemImage: "arrow.clockwise")
+                            Spacer()
+                            if preloadService.isPreloading {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(preloadService.isPreloading)
+                } header: {
+                    Text("Images")
+                } footer: {
+                    Text("Re-download all ARASAAC symbol images. Use if images appear corrupted or missing.")
                 }
 
                 // Caregiver Access section
@@ -159,6 +178,20 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Are you sure you want to sign out? Your local settings will be preserved.")
+            }
+            .confirmationDialog(
+                "Refresh Images",
+                isPresented: $showRefreshImagesConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Refresh") {
+                    Task {
+                        await preloadService.refreshImages()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will re-download all symbol images. This requires an internet connection and may take a few minutes.")
             }
         }
     }

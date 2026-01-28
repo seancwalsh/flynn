@@ -10,6 +10,7 @@ struct FlynnAACApp: App {
             AuthContainerView {
                 ContentView()
             }
+            .preloadOnFirstLaunch()  // Show preload progress on first launch
         }
     }
 }
