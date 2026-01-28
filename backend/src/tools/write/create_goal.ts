@@ -2,27 +2,13 @@
  * create_goal Tool
  *
  * Create a new therapy goal.
- *
- * NOTE: The goals table doesn't exist yet. This implementation returns
- * mock data and is structured to work correctly once the table is created.
- *
- * TODO: Create goals table with schema:
- * - id: UUID
- * - childId: UUID (FK to children)
- * - type: enum('ABA', 'OT', 'SLP', 'communication', 'other')
- * - title: varchar(255)
- * - description: text
- * - targetDate: date (optional)
- * - criteria: text (success criteria)
- * - status: enum('active', 'completed', 'paused') default 'active'
- * - progress: integer (0-100) default 0
- * - createdAt: timestamp
- * - updatedAt: timestamp
  */
 
 import { z } from "zod/v4";
 import type { Tool, ToolContext, ToolResult } from "@/types/claude";
 import { verifyChildAccess } from "../authorization";
+import { db } from "../../db";
+import { goals } from "../../db/schema";
 
 // ============================================================================
 // Types
@@ -38,12 +24,10 @@ export interface CreatedGoal {
   title: string;
   description: string | null;
   targetDate: string | null;
-  criteria: string | null;
   status: GoalStatus;
   progress: number;
   createdAt: string;
   updatedAt: string;
-  _mock: boolean;
 }
 
 // ============================================================================
@@ -110,42 +94,33 @@ async function createGoal(
     }
   }
 
-  // TODO: Create goal in database once table exists
-  // const { db } = await import("@/db");
-  // const { goals } = await import("@/db/schema");
-  //
-  // const [goal] = await db.insert(goals).values({
-  //   childId: input.childId,
-  //   type: input.type,
-  //   title: input.title,
-  //   description: input.description ?? null,
-  //   targetDate: input.targetDate ?? null,
-  //   criteria: input.criteria ?? null,
-  //   status: 'active',
-  //   progress: 0,
-  // }).returning();
-
-  // Return mock data for MVP
-  const now = new Date().toISOString();
-  const mockGoal: CreatedGoal = {
-    id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  // Create goal in database
+  const [goal] = await db.insert(goals).values({
     childId: input.childId,
-    type: input.type,
+    therapyType: input.type.toLowerCase(), // Schema uses lowercase
     title: input.title,
     description: input.description ?? null,
     targetDate: input.targetDate ?? null,
-    criteria: input.criteria ?? null,
     status: "active",
-    progress: 0,
-    createdAt: now,
-    updatedAt: now,
-    _mock: true,
-  };
+    progressPercent: 0,
+    createdBy: context.userId,
+  }).returning();
 
   return {
     success: true,
     data: {
-      goal: mockGoal,
+      goal: {
+        id: goal.id,
+        childId: goal.childId,
+        type: input.type,
+        title: goal.title,
+        description: goal.description,
+        targetDate: goal.targetDate,
+        status: goal.status,
+        progress: goal.progressPercent,
+        createdAt: goal.createdAt.toISOString(),
+        updatedAt: goal.updatedAt.toISOString(),
+      },
       message: `Successfully created ${input.type} goal: "${input.title}"`,
     },
   };
