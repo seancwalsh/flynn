@@ -5,6 +5,8 @@ import { db } from "../../../db";
 import { therapists, therapistClients, children } from "../../../db/schema";
 import { eq, and } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
+import { requireAdmin } from "../../../middleware/authorization";
+import { canAccessChild } from "../../../services/authorization";
 
 export const therapistsRoutes = new Hono();
 
@@ -22,26 +24,50 @@ const assignClientSchema = z.object({
   childId: z.string().uuid(),
 });
 
-// List all therapists
+// List therapists (therapists see themselves, admins see all)
 therapistsRoutes.get("/", async (c) => {
-  const allTherapists = await db.select().from(therapists);
-  return c.json({ data: allTherapists });
+  const user = c.get("user");
+  
+  if (user.role === "admin") {
+    const allTherapists = await db.select().from(therapists);
+    return c.json({ data: allTherapists });
+  }
+  
+  // Therapists can only see themselves
+  if (user.role === "therapist") {
+    const [therapist] = await db
+      .select()
+      .from(therapists)
+      .where(eq(therapists.email, user.email));
+    return c.json({ data: therapist ? [therapist] : [] });
+  }
+  
+  // Caregivers can see therapists assigned to their children
+  // For now, return empty - this can be enhanced later
+  return c.json({ data: [] });
 });
 
 // Get single therapist
 therapistsRoutes.get("/:id", async (c) => {
   const id = c.req.param("id");
+  const user = c.get("user");
+  
   const [therapist] = await db.select().from(therapists).where(eq(therapists.id, id));
   
   if (!therapist) {
     throw new AppError("Therapist not found", 404, "NOT_FOUND");
   }
   
+  // Therapists can view themselves, admins can view anyone
+  if (user.role !== "admin" && therapist.email !== user.email) {
+    throw new AppError("You can only view your own therapist profile", 403, "FORBIDDEN");
+  }
+  
   return c.json({ data: therapist });
 });
 
-// Create therapist
-therapistsRoutes.post("/", zValidator("json", createTherapistSchema), async (c) => {
+// Create therapist (admin only)
+therapistsRoutes.post("/", requireAdmin(), zValidator("json", createTherapistSchema), async (c) => {
   const body = c.req.valid("json");
   
   const [therapist] = await db.insert(therapists).values({
@@ -52,10 +78,21 @@ therapistsRoutes.post("/", zValidator("json", createTherapistSchema), async (c) 
   return c.json({ data: therapist }, 201);
 });
 
-// Update therapist
+// Update therapist (admin or self)
 therapistsRoutes.patch("/:id", zValidator("json", updateTherapistSchema), async (c) => {
   const id = c.req.param("id");
   const body = c.req.valid("json");
+  const user = c.get("user");
+  
+  const [existing] = await db.select().from(therapists).where(eq(therapists.id, id));
+  if (!existing) {
+    throw new AppError("Therapist not found", 404, "NOT_FOUND");
+  }
+  
+  // Only admin or the therapist themselves can update
+  if (user.role !== "admin" && existing.email !== user.email) {
+    throw new AppError("You can only update your own profile", 403, "FORBIDDEN");
+  }
   
   const [therapist] = await db
     .update(therapists)
@@ -63,15 +100,11 @@ therapistsRoutes.patch("/:id", zValidator("json", updateTherapistSchema), async 
     .where(eq(therapists.id, id))
     .returning();
   
-  if (!therapist) {
-    throw new AppError("Therapist not found", 404, "NOT_FOUND");
-  }
-  
   return c.json({ data: therapist });
 });
 
-// Delete therapist
-therapistsRoutes.delete("/:id", async (c) => {
+// Delete therapist (admin only)
+therapistsRoutes.delete("/:id", requireAdmin(), async (c) => {
   const id = c.req.param("id");
   
   const [deleted] = await db
@@ -86,9 +119,20 @@ therapistsRoutes.delete("/:id", async (c) => {
   return c.json({ message: "Therapist deleted" });
 });
 
-// Get therapist's clients
+// Get therapist's clients (admin or the therapist)
 therapistsRoutes.get("/:id/clients", async (c) => {
   const id = c.req.param("id");
+  const user = c.get("user");
+  
+  const [therapist] = await db.select().from(therapists).where(eq(therapists.id, id));
+  if (!therapist) {
+    throw new AppError("Therapist not found", 404, "NOT_FOUND");
+  }
+  
+  // Only admin or the therapist can see their clients
+  if (user.role !== "admin" && therapist.email !== user.email) {
+    throw new AppError("You can only view your own clients", 403, "FORBIDDEN");
+  }
   
   const clients = await db
     .select({
@@ -103,10 +147,19 @@ therapistsRoutes.get("/:id/clients", async (c) => {
   return c.json({ data: clients });
 });
 
-// Assign client to therapist
+// Assign client to therapist (admin or caregiver of the child)
 therapistsRoutes.post("/:id/clients", zValidator("json", assignClientSchema), async (c) => {
   const therapistId = c.req.param("id");
   const body = c.req.valid("json");
+  const user = c.get("user");
+  
+  // Admin can assign anyone, caregivers can assign their own children
+  if (user.role !== "admin") {
+    const hasAccess = await canAccessChild(user, body.childId);
+    if (!hasAccess) {
+      throw new AppError("You can only assign your own children", 403, "FORBIDDEN");
+    }
+  }
   
   const [assignment] = await db.insert(therapistClients).values({
     therapistId,
@@ -116,10 +169,19 @@ therapistsRoutes.post("/:id/clients", zValidator("json", assignClientSchema), as
   return c.json({ data: assignment }, 201);
 });
 
-// Remove client from therapist
+// Remove client from therapist (admin or caregiver of the child)
 therapistsRoutes.delete("/:id/clients/:childId", async (c) => {
   const therapistId = c.req.param("id");
   const childId = c.req.param("childId");
+  const user = c.get("user");
+  
+  // Admin can remove anyone, caregivers can remove their own children
+  if (user.role !== "admin") {
+    const hasAccess = await canAccessChild(user, childId);
+    if (!hasAccess) {
+      throw new AppError("You can only manage your own children's therapists", 403, "FORBIDDEN");
+    }
+  }
   
   await db
     .delete(therapistClients)

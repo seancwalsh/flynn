@@ -14,6 +14,7 @@ import { notificationPreferences, devices, notificationLogs } from "../../../db/
 import { eq, desc } from "drizzle-orm";
 import { notificationService, DEFAULT_PREFERENCES } from "../../../services/notification-service";
 import { AppError } from "../../../middleware/error-handler";
+import { requireAdmin } from "../../../middleware/authorization";
 
 export const notificationsRoutes = new Hono();
 
@@ -21,9 +22,15 @@ export const notificationsRoutes = new Hono();
 // PREFERENCES
 // ============================================================================
 
-// Get notification preferences
+// Get notification preferences (users can only access their own)
 notificationsRoutes.get("/preferences/:userId", async (c) => {
   const userId = c.req.param("userId");
+  const user = c.get("user");
+  
+  // Users can only access their own preferences (unless admin)
+  if (user.role !== "admin" && user.id !== userId) {
+    throw new AppError("You can only access your own notification preferences", 403, "FORBIDDEN");
+  }
   
   const [prefs] = await db
     .select()
@@ -76,6 +83,12 @@ notificationsRoutes.put(
   async (c) => {
     const userId = c.req.param("userId");
     const body = c.req.valid("json");
+    const user = c.get("user");
+    
+    // Users can only update their own preferences (unless admin)
+    if (user.role !== "admin" && user.id !== userId) {
+      throw new AppError("You can only update your own notification preferences", 403, "FORBIDDEN");
+    }
 
     // Check if preferences exist
     const [existing] = await db
@@ -121,13 +134,19 @@ const registerDeviceSchema = z.object({
   platform: z.enum(["ios", "android", "web"]),
 });
 
-// Register a device for push notifications
+// Register a device for push notifications (users can only register for themselves)
 notificationsRoutes.post(
   "/devices/:userId",
   zValidator("json", registerDeviceSchema),
   async (c) => {
     const userId = c.req.param("userId");
     const { deviceToken, platform } = c.req.valid("json");
+    const user = c.get("user");
+    
+    // Users can only register devices for themselves (unless admin)
+    if (user.role !== "admin" && user.id !== userId) {
+      throw new AppError("You can only register devices for yourself", 403, "FORBIDDEN");
+    }
 
     await notificationService.registerDevice(userId, deviceToken, platform);
 
@@ -135,9 +154,21 @@ notificationsRoutes.post(
   }
 );
 
-// Unregister a device
+// Unregister a device (verify ownership via device lookup)
 notificationsRoutes.delete("/devices/:deviceToken", async (c) => {
   const deviceToken = c.req.param("deviceToken");
+  const user = c.get("user");
+  
+  // Look up device to verify ownership
+  const [device] = await db
+    .select()
+    .from(devices)
+    .where(eq(devices.deviceToken, deviceToken))
+    .limit(1);
+  
+  if (device && user.role !== "admin" && device.userId !== user.id) {
+    throw new AppError("You can only unregister your own devices", 403, "FORBIDDEN");
+  }
 
   await notificationService.unregisterDevice(deviceToken);
 
@@ -147,6 +178,12 @@ notificationsRoutes.delete("/devices/:deviceToken", async (c) => {
 // List user's registered devices
 notificationsRoutes.get("/devices/:userId", async (c) => {
   const userId = c.req.param("userId");
+  const user = c.get("user");
+  
+  // Users can only list their own devices (unless admin)
+  if (user.role !== "admin" && user.id !== userId) {
+    throw new AppError("You can only view your own devices", 403, "FORBIDDEN");
+  }
 
   const userDevices = await db
     .select({
@@ -174,6 +211,12 @@ notificationsRoutes.get(
   async (c) => {
     const userId = c.req.param("userId");
     const { limit } = c.req.valid("query");
+    const user = c.get("user");
+    
+    // Users can only view their own history (unless admin)
+    if (user.role !== "admin" && user.id !== userId) {
+      throw new AppError("You can only view your own notification history", 403, "FORBIDDEN");
+    }
 
     const history = await db
       .select()
@@ -187,10 +230,10 @@ notificationsRoutes.get(
 );
 
 // ============================================================================
-// TEST NOTIFICATION (development only)
+// TEST NOTIFICATION (admin only)
 // ============================================================================
 
-notificationsRoutes.post("/test/:userId", async (c) => {
+notificationsRoutes.post("/test/:userId", requireAdmin(), async (c) => {
   const userId = c.req.param("userId");
 
   const result = await notificationService.sendToUser(userId, {
