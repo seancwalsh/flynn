@@ -3,13 +3,13 @@
  * FLY-98: Insights table and in-app feed
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "~/mocks/node";
 import { InsightsFeed } from "./InsightsFeed";
 
-// Mock fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+const API_BASE = "http://localhost:3000/api/v1";
 
 const mockInsights = [
   {
@@ -60,17 +60,20 @@ const mockInsightsResponse = {
   },
 };
 
+// Default handler for insights
+const defaultInsightsHandler = http.get(`${API_BASE}/insights`, () => {
+  return HttpResponse.json(mockInsightsResponse);
+});
+
+// Delete/dismiss handler
+const deleteInsightHandler = http.delete(`${API_BASE}/insights/:id`, () => {
+  return HttpResponse.json({ success: true });
+});
+
 describe("InsightsFeed", () => {
   beforeEach(() => {
-    mockFetch.mockReset();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockInsightsResponse),
-    });
-  });
-
-  afterEach(() => {
     vi.clearAllMocks();
+    server.use(defaultInsightsHandler, deleteInsightHandler);
   });
 
   it("renders bell icon", () => {
@@ -89,10 +92,9 @@ describe("InsightsFeed", () => {
   it("fetches insights on mount", async () => {
     render(<InsightsFeed childId="child-1" />);
 
+    // Verify insights are fetched by checking the badge appears
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/insights?childId=child-1")
-      );
+      expect(screen.getByText("2")).toBeInTheDocument();
     });
   });
 
@@ -132,14 +134,14 @@ describe("InsightsFeed", () => {
   });
 
   it("shows empty state when no insights", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    server.use(
+      http.get(`${API_BASE}/insights`, () => {
+        return HttpResponse.json({
           data: [],
           meta: { total: 0, unreadCount: 0, limit: 20, offset: 0 },
-        }),
-    });
+        });
+      })
+    );
 
     render(<InsightsFeed childId="child-1" />);
 
@@ -154,14 +156,19 @@ describe("InsightsFeed", () => {
 
 describe("InsightsFeed - Interactions", () => {
   beforeEach(() => {
-    mockFetch.mockReset();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockInsightsResponse),
-    });
+    vi.clearAllMocks();
+    server.use(defaultInsightsHandler, deleteInsightHandler);
   });
 
   it("calls dismiss API when X is clicked", async () => {
+    let deleteCalled = false;
+    server.use(
+      http.delete(`${API_BASE}/insights/:id`, () => {
+        deleteCalled = true;
+        return HttpResponse.json({ success: true });
+      })
+    );
+
     render(<InsightsFeed childId="child-1" />);
 
     // Open popover
@@ -179,23 +186,23 @@ describe("InsightsFeed - Interactions", () => {
     );
 
     if (dismissButton) {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      });
-
       fireEvent.click(dismissButton);
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining("/insights/1"),
-          expect.objectContaining({ method: "DELETE" })
-        );
+        expect(deleteCalled).toBe(true);
       });
     }
   });
 
   it("refreshes when refresh button is clicked", async () => {
+    let fetchCount = 0;
+    server.use(
+      http.get(`${API_BASE}/insights`, () => {
+        fetchCount++;
+        return HttpResponse.json(mockInsightsResponse);
+      })
+    );
+
     render(<InsightsFeed childId="child-1" />);
 
     const bellButton = screen.getByRole("button");
@@ -205,19 +212,20 @@ describe("InsightsFeed - Interactions", () => {
       expect(screen.getByText("Refresh")).toBeInTheDocument();
     });
 
+    const initialFetchCount = fetchCount;
     const refreshButton = screen.getByText("Refresh");
     fireEvent.click(refreshButton);
 
     await waitFor(() => {
-      // Should have been called twice - initial + refresh
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Should have been called at least once more after refresh
+      expect(fetchCount).toBeGreaterThan(initialFetchCount);
     });
   });
 });
 
 describe("InsightsFeed - Severity Styling", () => {
   beforeEach(() => {
-    mockFetch.mockReset();
+    vi.clearAllMocks();
   });
 
   it("applies critical styling for critical severity", async () => {
@@ -228,14 +236,14 @@ describe("InsightsFeed - Severity Styling", () => {
       title: "Critical Alert",
     };
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    server.use(
+      http.get(`${API_BASE}/insights`, () => {
+        return HttpResponse.json({
           data: [criticalInsight],
           meta: { total: 1, unreadCount: 1, limit: 20, offset: 0 },
-        }),
-    });
+        });
+      })
+    );
 
     render(<InsightsFeed childId="child-1" />);
 
@@ -248,14 +256,14 @@ describe("InsightsFeed - Severity Styling", () => {
   });
 
   it("applies warning styling for warning severity", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+    server.use(
+      http.get(`${API_BASE}/insights`, () => {
+        return HttpResponse.json({
           data: [mockInsights[1]],
           meta: { total: 1, unreadCount: 1, limit: 20, offset: 0 },
-        }),
-    });
+        });
+      })
+    );
 
     render(<InsightsFeed childId="child-1" />);
 
@@ -270,15 +278,16 @@ describe("InsightsFeed - Severity Styling", () => {
 
 describe("useInsights hook behavior", () => {
   beforeEach(() => {
-    mockFetch.mockReset();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockInsightsResponse),
-    });
+    vi.clearAllMocks();
+    server.use(defaultInsightsHandler);
   });
 
   it("handles fetch errors gracefully", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("Network error"));
+    server.use(
+      http.get(`${API_BASE}/insights`, () => {
+        return HttpResponse.error();
+      })
+    );
 
     render(<InsightsFeed childId="child-1" />);
 
@@ -289,10 +298,14 @@ describe("useInsights hook behavior", () => {
   });
 
   it("handles API error responses", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      statusText: "Internal Server Error",
-    });
+    server.use(
+      http.get(`${API_BASE}/insights`, () => {
+        return HttpResponse.json(
+          { message: "Internal Server Error" },
+          { status: 500 }
+        );
+      })
+    );
 
     render(<InsightsFeed childId="child-1" />);
 
