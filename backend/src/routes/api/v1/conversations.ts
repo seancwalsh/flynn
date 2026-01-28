@@ -23,6 +23,8 @@ import {
 import type { ConversationMessage } from "../../../db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
+import { requireConversationAccess } from "../../../middleware/authorization";
+import { canAccessConversation } from "../../../services/authorization";
 import { ClaudeService } from "../../../services/claude";
 import { ToolExecutor } from "../../../services/tool-executor";
 import { 
@@ -146,6 +148,7 @@ conversationsRoutes.post(
   zValidator("json", createConversationSchema),
   async (c) => {
     const { caregiverId, childId, title } = c.req.valid("json");
+    const user = c.get("user");
 
     // Verify caregiver exists
     const [caregiver] = await db
@@ -155,6 +158,11 @@ conversationsRoutes.post(
 
     if (!caregiver) {
       throw new AppError("Caregiver not found", 404, "CAREGIVER_NOT_FOUND");
+    }
+
+    // Verify the authenticated user IS this caregiver (by email)
+    if (user.role !== "admin" && caregiver.email !== user.email) {
+      throw new AppError("You can only create conversations as yourself", 403, "FORBIDDEN");
     }
 
     // Verify child exists if provided
@@ -188,13 +196,28 @@ conversationsRoutes.post(
 );
 
 /**
- * List conversations for a caregiver
+ * List conversations for a caregiver (must be the authenticated user)
  */
 conversationsRoutes.get(
   "/",
   zValidator("query", listConversationsQuerySchema),
   async (c) => {
     const { caregiverId, childId, limit, offset } = c.req.valid("query");
+    const user = c.get("user");
+
+    // Verify the user is the caregiver being queried (or admin)
+    const [caregiver] = await db
+      .select()
+      .from(caregivers)
+      .where(eq(caregivers.id, caregiverId));
+
+    if (!caregiver) {
+      throw new AppError("Caregiver not found", 404, "CAREGIVER_NOT_FOUND");
+    }
+
+    if (user.role !== "admin" && caregiver.email !== user.email) {
+      throw new AppError("You can only view your own conversations", 403, "FORBIDDEN");
+    }
 
     const conditions = [eq(conversations.caregiverId, caregiverId)];
     if (childId) {
@@ -214,9 +237,9 @@ conversationsRoutes.get(
 );
 
 /**
- * Get a single conversation with messages
+ * Get a single conversation with messages (with authorization)
  */
-conversationsRoutes.get("/:id", async (c) => {
+conversationsRoutes.get("/:id", requireConversationAccess("id"), async (c) => {
   const id = c.req.param("id");
 
   const [conversation] = await db
