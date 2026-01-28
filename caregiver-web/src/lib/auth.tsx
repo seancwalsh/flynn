@@ -24,6 +24,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
+  logout: () => Promise<void>; // Alias for signOut
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,8 +59,9 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
 
         const { data, error } = await authApi.me();
         if (error || !data) {
-          console.error("Failed to fetch user:", error);
-          setState({ user: null, isLoading: false, isAuthenticated: false });
+          console.error("Failed to fetch user from backend:", error);
+          // Still consider authenticated via Clerk, just without backend user data
+          setState({ user: null, isLoading: false, isAuthenticated: true });
           return;
         }
 
@@ -70,7 +72,8 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
         });
       } catch (err) {
         console.error("Auth error:", err);
-        setState({ user: null, isLoading: false, isAuthenticated: false });
+        // Still consider authenticated via Clerk, just without backend user data
+        setState({ user: null, isLoading: false, isAuthenticated: true });
       }
     };
 
@@ -88,6 +91,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         signOut,
+        logout: signOut, // Alias
       }}
     >
       {children}
@@ -97,13 +101,15 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
 
 // Mock provider for when Clerk is not configured
 function MockAuthProvider({ children }: { children: ReactNode }) {
+  const noOp = async () => {
+    // No-op when Clerk is not configured
+  };
   const value: AuthContextValue = {
     user: null,
     isLoading: false,
     isAuthenticated: false,
-    signOut: async () => {
-      // No-op when Clerk is not configured
-    },
+    signOut: noOp,
+    logout: noOp,
   };
 
   return (

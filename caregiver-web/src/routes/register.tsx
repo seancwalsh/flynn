@@ -36,10 +36,9 @@ function ClerkRegisterPage() {
         {/* Clerk SignUp Component */}
         <div className="flex justify-center">
           <SignUp
-            routing="path"
-            path="/register"
+            routing="hash"
             signInUrl="/login"
-            afterSignUpUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
             unsafeMetadata={{ role: "caregiver" }}
             appearance={{
               elements: {

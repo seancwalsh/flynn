@@ -36,10 +36,9 @@ function ClerkLoginPage() {
         {/* Clerk SignIn Component */}
         <div className="flex justify-center">
           <SignIn
-            routing="path"
-            path="/login"
+            routing="hash"
             signUpUrl="/register"
-            afterSignInUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
             appearance={{
               elements: {
                 rootBox: "w-full",
