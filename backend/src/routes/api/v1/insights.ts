@@ -3,8 +3,10 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
 import { db } from "../../../db";
 import { insights } from "../../../db/schema";
-import { eq, and, desc, isNull, sql, count } from "drizzle-orm";
+import { eq, and, desc, isNull, sql, count, inArray } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
+import { filterAccessibleChildren, requireChildAccess } from "../../../middleware/authorization";
+import { canAccessChild } from "../../../services/authorization";
 
 export const insightsRoutes = new Hono();
 
@@ -37,15 +39,30 @@ const querySchema = z.object({
   offset: z.coerce.number().min(0).default(0),
 });
 
-// List insights with filtering
-insightsRoutes.get("/", zValidator("query", querySchema), async (c) => {
+// List insights with filtering (authorized)
+insightsRoutes.get("/", filterAccessibleChildren(), zValidator("query", querySchema), async (c) => {
   const query = c.req.valid("query");
+  const user = c.get("user");
+  const accessibleChildIds = c.get("accessibleChildIds");
+  
+  // If no accessible children, return empty
+  if (accessibleChildIds.length === 0 && user.role !== "admin") {
+    return c.json({ data: [], meta: { total: 0, unreadCount: 0, limit: query.limit, offset: query.offset } });
+  }
   
   const conditions = [];
   
+  // Filter by specific child or accessible children
   if (query.childId) {
+    const hasAccess = await canAccessChild(user, query.childId);
+    if (!hasAccess) {
+      throw new AppError("You don't have access to this child's insights", 403, "FORBIDDEN");
+    }
     conditions.push(eq(insights.childId, query.childId));
+  } else if (user.role !== "admin") {
+    conditions.push(inArray(insights.childId, accessibleChildIds));
   }
+  
   if (query.type) {
     conditions.push(eq(insights.type, query.type));
   }
@@ -75,7 +92,9 @@ insightsRoutes.get("/", zValidator("query", querySchema), async (c) => {
   // Get unread count
   const unreadConditions = query.childId 
     ? [eq(insights.childId, query.childId), isNull(insights.readAt), isNull(insights.dismissedAt)]
-    : [isNull(insights.readAt), isNull(insights.dismissedAt)];
+    : user.role === "admin"
+      ? [isNull(insights.readAt), isNull(insights.dismissedAt)]
+      : [inArray(insights.childId, accessibleChildIds), isNull(insights.readAt), isNull(insights.dismissedAt)];
   
   const [{ unreadCount }] = await db
     .select({ unreadCount: count() })
@@ -93,21 +112,36 @@ insightsRoutes.get("/", zValidator("query", querySchema), async (c) => {
   });
 });
 
-// Get single insight
+// Get single insight (verify access via child)
 insightsRoutes.get("/:id", async (c) => {
   const id = c.req.param("id");
+  const user = c.get("user");
+  
   const [insight] = await db.select().from(insights).where(eq(insights.id, id));
   
   if (!insight) {
     throw new AppError("Insight not found", 404, "NOT_FOUND");
   }
   
+  // Verify access to the child this insight belongs to
+  const hasAccess = await canAccessChild(user, insight.childId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this insight", 403, "FORBIDDEN");
+  }
+  
   return c.json({ data: insight });
 });
 
-// Create insight (typically called by scheduled jobs)
+// Create insight (typically called by scheduled jobs - verify access)
 insightsRoutes.post("/", zValidator("json", createInsightSchema), async (c) => {
   const body = c.req.valid("json");
+  const user = c.get("user");
+  
+  // Verify access to the target child
+  const hasAccess = await canAccessChild(user, body.childId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this child", 403, "FORBIDDEN");
+  }
   
   const [insight] = await db.insert(insights).values({
     childId: body.childId,
@@ -118,8 +152,8 @@ insightsRoutes.post("/", zValidator("json", createInsightSchema), async (c) => {
   return c.json({ data: insight }, 201);
 });
 
-// Get latest daily digest for a child
-insightsRoutes.get("/daily/:childId", async (c) => {
+// Get latest daily digest for a child (with authorization)
+insightsRoutes.get("/daily/:childId", requireChildAccess("childId"), async (c) => {
   const childId = c.req.param("childId");
   
   const [insight] = await db
@@ -141,8 +175,8 @@ insightsRoutes.get("/daily/:childId", async (c) => {
   return c.json({ data: insight });
 });
 
-// Get latest weekly report for a child
-insightsRoutes.get("/weekly/:childId", async (c) => {
+// Get latest weekly report for a child (with authorization)
+insightsRoutes.get("/weekly/:childId", requireChildAccess("childId"), async (c) => {
   const childId = c.req.param("childId");
   
   const [insight] = await db
@@ -164,9 +198,10 @@ insightsRoutes.get("/weekly/:childId", async (c) => {
   return c.json({ data: insight });
 });
 
-// Mark insight as read
+// Mark insight as read (verify access via child)
 insightsRoutes.patch("/:id/read", async (c) => {
   const id = c.req.param("id");
+  const user = c.get("user");
   
   const [insight] = await db
     .select()
@@ -175,6 +210,12 @@ insightsRoutes.patch("/:id/read", async (c) => {
   
   if (!insight) {
     throw new AppError("Insight not found", 404, "NOT_FOUND");
+  }
+  
+  // Verify access
+  const hasAccess = await canAccessChild(user, insight.childId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this insight", 403, "FORBIDDEN");
   }
   
   // Only update if not already read
@@ -193,11 +234,28 @@ insightsRoutes.patch("/:id/read", async (c) => {
   return c.json({ data: updated });
 });
 
-// Mark multiple insights as read
-insightsRoutes.post("/mark-read", zValidator("json", z.object({
+// Mark multiple insights as read (verify access to each)
+insightsRoutes.post("/mark-read", filterAccessibleChildren(), zValidator("json", z.object({
   ids: z.array(z.string().uuid()).min(1).max(100),
 })), async (c) => {
   const { ids } = c.req.valid("json");
+  const user = c.get("user");
+  const accessibleChildIds = c.get("accessibleChildIds");
+  
+  // Get all insights to verify access
+  const insightsToMark = await db
+    .select()
+    .from(insights)
+    .where(sql`${insights.id} = ANY(${ids})`);
+  
+  // Verify user has access to all insights' children (unless admin)
+  if (user.role !== "admin") {
+    for (const insight of insightsToMark) {
+      if (!accessibleChildIds.includes(insight.childId)) {
+        throw new AppError("You don't have access to all requested insights", 403, "FORBIDDEN");
+      }
+    }
+  }
   
   await db
     .update(insights)
@@ -207,9 +265,10 @@ insightsRoutes.post("/mark-read", zValidator("json", z.object({
   return c.json({ success: true, count: ids.length });
 });
 
-// Dismiss insight (soft delete)
+// Dismiss insight (soft delete - verify access via child)
 insightsRoutes.delete("/:id", async (c) => {
   const id = c.req.param("id");
+  const user = c.get("user");
   
   const [insight] = await db
     .select()
@@ -220,6 +279,12 @@ insightsRoutes.delete("/:id", async (c) => {
     throw new AppError("Insight not found", 404, "NOT_FOUND");
   }
   
+  // Verify access
+  const hasAccess = await canAccessChild(user, insight.childId);
+  if (!hasAccess) {
+    throw new AppError("You don't have access to this insight", 403, "FORBIDDEN");
+  }
+  
   await db
     .update(insights)
     .set({ dismissedAt: new Date() })
@@ -228,8 +293,8 @@ insightsRoutes.delete("/:id", async (c) => {
   return c.json({ success: true });
 });
 
-// Get unread count for a child (useful for badge)
-insightsRoutes.get("/unread-count/:childId", async (c) => {
+// Get unread count for a child (with authorization)
+insightsRoutes.get("/unread-count/:childId", requireChildAccess("childId"), async (c) => {
   const childId = c.req.param("childId");
   
   const [{ unreadCount }] = await db
