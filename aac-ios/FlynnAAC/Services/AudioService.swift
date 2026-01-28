@@ -145,6 +145,8 @@ actor AudioService {
         } catch {
             // Log error for debugging
             print("ElevenLabs phrase generation failed: \(error)")
+            // Report fallback to user
+            await reportAudioFallback(error: error)
             // Fall through to TTS on any error (network, API, etc.)
         }
 
@@ -202,6 +204,32 @@ actor AudioService {
             // Verify playback category is configured correctly
             return AVAudioSession.sharedInstance().category == .playback
         }
+    }
+
+    // MARK: - Error Reporting
+    
+    @MainActor
+    private func reportAudioFallback(error: Error) {
+        let reason: String
+        if let elevenLabsError = error as? ElevenLabsError {
+            switch elevenLabsError {
+            case .noAPIKey:
+                reason = "ElevenLabs not configured"
+            case .networkError:
+                reason = "Network unavailable, using system voice"
+            case .apiError(let statusCode, _):
+                if statusCode == 429 {
+                    reason = "Rate limited, using system voice"
+                } else {
+                    reason = "Service unavailable, using system voice"
+                }
+            default:
+                reason = "Using system voice"
+            }
+        } else {
+            reason = "Using system voice"
+        }
+        ErrorNotificationService.shared.reportAudioFallback(reason: reason)
     }
 
     // MARK: - FLY-11: Feedback Configuration

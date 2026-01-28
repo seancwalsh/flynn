@@ -5,6 +5,7 @@ struct ARASAACImageView: View {
 
     @State private var image: UIImage?
     @State private var isLoading = true
+    @State private var loadFailed = false
 
     var body: some View {
         Group {
@@ -20,7 +21,7 @@ struct ARASAACImageView: View {
                 Image(systemName: SymbolCell.sfSymbolMapping[symbolId] ?? "questionmark.circle")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .foregroundStyle(FlynnTheme.Colors.textSecondary)
+                    .foregroundStyle(loadFailed ? FlynnTheme.Colors.textTertiary : FlynnTheme.Colors.textSecondary)
             }
         }
         .task {
@@ -42,11 +43,27 @@ struct ARASAACImageView: View {
             let imagePath = try await ARASAACService.shared.downloadPictogram(for: symbolId)
             if let downloadedImage = UIImage(contentsOfFile: imagePath.path) {
                 self.image = downloadedImage
+            } else {
+                // Image file exists but couldn't be loaded
+                self.loadFailed = true
+                await reportLoadError()
             }
         } catch {
             print("Failed to load ARASAAC pictogram for \(symbolId): \(error)")
+            self.loadFailed = true
+            await reportLoadError()
         }
 
         self.isLoading = false
+    }
+    
+    @MainActor
+    private func reportLoadError() {
+        // Report to error notification service
+        // Use a slight delay to avoid showing errors for every cell during initial load
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
+            ErrorNotificationService.shared.reportImageLoadFailed(symbolId: symbolId)
+        }
     }
 }

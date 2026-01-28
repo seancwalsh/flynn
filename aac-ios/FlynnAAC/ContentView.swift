@@ -150,6 +150,7 @@ struct ContentView: View {
                 )
             }
         }
+        .withErrorBanner()  // Non-blocking error notifications
         .sheet(isPresented: $showSettings) {
             SettingsView(
                 settings: $viewModel.settings,
