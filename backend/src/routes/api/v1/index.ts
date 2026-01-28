@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { requireAuth } from "../../../middleware/auth";
 import { familiesRoutes } from "./families";
 import { childrenRoutes } from "./children";
 import { caregiversRoutes } from "./caregivers";
@@ -10,7 +11,20 @@ import { notificationsRoutes } from "./notifications";
 
 export const apiV1Routes = new Hono();
 
-// Mount all resource routes
+// API info endpoint (public)
+apiV1Routes.get("/", (c) => {
+  return c.json({
+    name: "Flynn AAC API",
+    version: "1.0.0",
+    documentation: "/api/v1/docs",
+  });
+});
+
+// Apply authentication to ALL routes below this point
+// This is a critical security measure - all API routes require valid JWT
+apiV1Routes.use("/*", requireAuth());
+
+// Mount all resource routes (all protected by requireAuth above)
 apiV1Routes.route("/families", familiesRoutes);
 apiV1Routes.route("/children", childrenRoutes);
 apiV1Routes.route("/caregivers", caregiversRoutes);
@@ -19,12 +33,3 @@ apiV1Routes.route("/usage-logs", usageLogsRoutes);
 apiV1Routes.route("/insights", insightsRoutes);
 apiV1Routes.route("/conversations", conversationsRoutes);
 apiV1Routes.route("/notifications", notificationsRoutes);
-
-// API info endpoint
-apiV1Routes.get("/", (c) => {
-  return c.json({
-    name: "Flynn AAC API",
-    version: "1.0.0",
-    documentation: "/api/v1/docs",
-  });
-});
