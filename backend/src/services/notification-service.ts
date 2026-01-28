@@ -8,7 +8,7 @@
  */
 
 import { db } from "../db";
-import { devices, users } from "../db/schema";
+import { devices, users, notificationPreferences, notificationLogs } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../utils/logger";
 
@@ -214,8 +214,8 @@ class NotificationService {
         success = true;
       }
 
-      // Log the notification
-      this.logNotification(userId, payload, result);
+      // Log the notification to database
+      await this.logNotification(userId, payload, result);
     }
 
     return { sent: success };
@@ -301,14 +301,42 @@ class NotificationService {
    * Get user's notification preferences
    */
   async getPreferences(userId: string): Promise<NotificationPreferences> {
-    // Check cache
+    // Check cache first
     if (this.preferences.has(userId)) {
       return this.preferences.get(userId)!;
     }
 
-    // TODO: Load from database (notification_preferences table)
-    // For now, return defaults
-    return DEFAULT_PREFERENCES;
+    // Load from database
+    const [prefs] = await db
+      .select()
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userId, userId))
+      .limit(1);
+
+    if (!prefs) {
+      // Return defaults if not set
+      return DEFAULT_PREFERENCES;
+    }
+
+    // Convert DB format to service format
+    const result: NotificationPreferences = {
+      enabled: prefs.enabled,
+      types: (prefs.typeSettings as Record<string, boolean>) || DEFAULT_PREFERENCES.types,
+      quietHours: {
+        enabled: prefs.quietHoursEnabled ?? true,
+        start: prefs.quietHoursStart ?? "22:00",
+        end: prefs.quietHoursEnd ?? "07:00",
+        timezone: prefs.timezone ?? "UTC",
+      },
+      frequency: {
+        maxPerHour: prefs.maxPerHour ?? 5,
+        maxPerDay: prefs.maxPerDay ?? 20,
+      },
+    };
+
+    // Cache for future requests
+    this.preferences.set(userId, result);
+    return result;
   }
 
   /**
@@ -321,7 +349,41 @@ class NotificationService {
     const current = await this.getPreferences(userId);
     const updated = { ...current, ...updates };
     
-    // TODO: Save to database
+    // Prepare database values
+    const dbValues = {
+      enabled: updated.enabled,
+      typeSettings: updated.types,
+      quietHoursEnabled: updated.quietHours?.enabled ?? true,
+      quietHoursStart: updated.quietHours?.start ?? "22:00",
+      quietHoursEnd: updated.quietHours?.end ?? "07:00",
+      timezone: updated.quietHours?.timezone ?? "UTC",
+      maxPerHour: updated.frequency?.maxPerHour ?? 5,
+      maxPerDay: updated.frequency?.maxPerDay ?? 20,
+      updatedAt: new Date(),
+    };
+
+    // Check if preferences exist
+    const [existing] = await db
+      .select()
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userId, userId))
+      .limit(1);
+
+    if (existing) {
+      // Update existing
+      await db
+        .update(notificationPreferences)
+        .set(dbValues)
+        .where(eq(notificationPreferences.userId, userId));
+    } else {
+      // Insert new
+      await db.insert(notificationPreferences).values({
+        userId,
+        ...dbValues,
+      });
+    }
+    
+    // Update cache
     this.preferences.set(userId, updated);
     
     return updated;
@@ -353,26 +415,28 @@ class NotificationService {
   }
 
   /**
-   * Log notification for history
+   * Log notification for history (saves to database)
    */
-  private logNotification(
+  private async logNotification(
     userId: string,
     payload: NotificationPayload,
     result: SendResult
-  ): void {
-    notificationLog.push({
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      userId,
-      type: payload.type,
-      title: payload.title,
-      sentAt: new Date(),
-      success: result.success,
-      error: result.error,
-    });
-
-    // Keep log bounded
-    if (notificationLog.length > 1000) {
-      notificationLog.splice(0, 100);
+  ): Promise<void> {
+    try {
+      await db.insert(notificationLogs).values({
+        userId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
+        success: result.success,
+        error: result.error,
+        messageId: result.messageId,
+        insightId: payload.insightId,
+        childId: payload.childId,
+      });
+    } catch (error) {
+      // Log error but don't fail the notification
+      logger.error("Failed to log notification", { error, userId, type: payload.type });
     }
   }
 
