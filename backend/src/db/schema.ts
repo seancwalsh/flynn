@@ -93,9 +93,17 @@ export const insights = pgTable("insights", {
     .references(() => children.id, { onDelete: "cascade" })
     .notNull(),
   type: varchar("type", { length: 50 }).notNull(), // daily_digest, weekly_report, regression_alert, milestone, suggestion
-  content: jsonb("content").notNull(), // Flexible JSON content
+  severity: varchar("severity", { length: 20 }), // info, warning, critical (null for non-alerts)
+  title: varchar("title", { length: 255 }),
+  body: text("body"), // Human-readable summary
+  content: jsonb("content").notNull(), // Flexible JSON content (data for rendering)
   generatedAt: timestamp("generated_at").defaultNow().notNull(),
-});
+  readAt: timestamp("read_at"), // When user first viewed it
+  dismissedAt: timestamp("dismissed_at"), // When user dismissed it
+}, (table) => [
+  index("insights_child_unread_idx").on(table.childId, table.readAt),
+  index("insights_generated_idx").on(table.generatedAt),
+]);
 
 // AI Conversations with Claude
 export const conversations = pgTable("conversations", {
