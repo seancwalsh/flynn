@@ -2,30 +2,15 @@
  * list_goals Tool
  * 
  * List therapy goals for a child with optional status filtering.
- * 
- * NOTE: The goals table doesn't exist yet. This implementation returns
- * mock data and is structured to work correctly once the table is created.
- * 
- * TODO: Create goals table with schema:
- * - id: UUID
- * - childId: UUID (FK to children)
- * - name: varchar(255)
- * - description: text
- * - targetDescription: text
- * - therapyType: enum('ABA', 'OT', 'SLP', 'other')
- * - status: enum('active', 'completed', 'paused')
- * - targetValue: number (e.g., 80 for 80% accuracy)
- * - currentValue: number
- * - targetDate: date (optional)
- * - createdAt: timestamp
- * - updatedAt: timestamp
- * - completedAt: timestamp (nullable)
  */
 
 import { z } from "zod/v4";
 import { createReadOnlyTool } from "@/services/tool-executor";
 import type { ToolContext } from "@/types/claude";
 import { verifyChildAccess } from "../authorization";
+import { db } from "../../db";
+import { goals } from "../../db/schema";
+import { eq, and } from "drizzle-orm";
 
 // ============================================================================
 // Types
@@ -69,7 +54,6 @@ export interface ListGoalsResult {
     completed: number;
     paused: number;
   };
-  _mock: boolean;
 }
 
 // ============================================================================
@@ -94,163 +78,57 @@ async function listGoals(
   // Verify access
   await verifyChildAccess(input.childId, context);
 
-  // TODO: Query the goals table once it exists
-  // const { db } = await import("@/db");
-  // const { goals } = await import("@/db/schema");
-  //
-  // let query = db
-  //   .select()
-  //   .from(goals)
-  //   .where(eq(goals.childId, input.childId));
-  //
-  // if (input.status && input.status !== "all") {
-  //   query = query.where(eq(goals.status, input.status));
-  // }
-  //
-  // const results = await query.orderBy(asc(goals.createdAt));
-
-  // Generate mock data for MVP
-  const allGoals = generateMockGoals(input.childId);
+  // Query goals from database
+  const conditions = [eq(goals.childId, input.childId)];
   
-  // Filter by status if specified
-  const filteredGoals = input.status === "all" 
-    ? allGoals
-    : allGoals.filter(g => g.status === input.status);
+  if (input.status && input.status !== "all") {
+    conditions.push(eq(goals.status, input.status));
+  }
+
+  const dbGoals = await db
+    .select()
+    .from(goals)
+    .where(and(...conditions))
+    .orderBy(goals.createdAt);
+
+  // Get all goals for counting (regardless of filter)
+  const allDbGoals = await db
+    .select()
+    .from(goals)
+    .where(eq(goals.childId, input.childId));
+
+  // Map to expected format
+  const mappedGoals: Goal[] = dbGoals.map(g => ({
+    id: g.id,
+    childId: g.childId,
+    name: g.title,
+    description: g.description ?? "",
+    targetDescription: g.description ?? "",
+    therapyType: (g.therapyType?.toUpperCase() ?? "other") as TherapyType,
+    status: g.status as Exclude<GoalStatus, "all">,
+    targetValue: 100,
+    currentValue: g.progressPercent ?? 0,
+    progressPercent: g.progressPercent ?? 0,
+    targetDate: g.targetDate,
+    createdAt: g.createdAt.toISOString(),
+    updatedAt: g.updatedAt.toISOString(),
+    completedAt: null,
+    lastSessionDate: null,
+    totalSessionsAddressed: 0,
+  }));
 
   // Calculate counts
   const countByStatus = {
-    active: allGoals.filter(g => g.status === "active").length,
-    completed: allGoals.filter(g => g.status === "completed").length,
-    paused: allGoals.filter(g => g.status === "paused").length,
+    active: allDbGoals.filter(g => g.status === "active").length,
+    completed: allDbGoals.filter(g => g.status === "achieved").length,
+    paused: allDbGoals.filter(g => g.status === "paused").length,
   };
 
   return {
-    goals: filteredGoals,
-    totalCount: filteredGoals.length,
+    goals: mappedGoals,
+    totalCount: mappedGoals.length,
     countByStatus,
-    _mock: true,
   };
-}
-
-/**
- * Generate mock goals for MVP
- */
-function generateMockGoals(childId: string): Goal[] {
-  const now = new Date();
-  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-
-  return [
-    {
-      id: "goal-requesting-001",
-      childId,
-      name: "Request preferred items",
-      description: "Child will independently request preferred items and activities using their AAC device",
-      targetDescription: "Child will independently request preferred items using AAC device in 8/10 trials across 3 consecutive sessions",
-      therapyType: "ABA",
-      status: "active",
-      targetValue: 80,
-      currentValue: 60,
-      progressPercent: 75,
-      targetDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      createdAt: twoMonthsAgo.toISOString(),
-      updatedAt: now.toISOString(),
-      completedAt: null,
-      lastSessionDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      totalSessionsAddressed: 12,
-    },
-    {
-      id: "goal-greetings-002",
-      childId,
-      name: "Respond to social greetings",
-      description: "Child will respond appropriately to greetings from peers and adults",
-      targetDescription: "Child will respond to greetings within 5 seconds using verbal or AAC response in 7/10 opportunities",
-      therapyType: "ABA",
-      status: "active",
-      targetValue: 70,
-      currentValue: 45,
-      progressPercent: 64,
-      targetDate: new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      createdAt: twoMonthsAgo.toISOString(),
-      updatedAt: now.toISOString(),
-      completedAt: null,
-      lastSessionDate: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      totalSessionsAddressed: 10,
-    },
-    {
-      id: "goal-articulation-003",
-      childId,
-      name: "/s/ sound in words",
-      description: "Improve articulation of the /s/ sound in initial position of words",
-      targetDescription: "Child will produce /s/ sound correctly in initial position of words in 80% of trials",
-      therapyType: "SLP",
-      status: "active",
-      targetValue: 80,
-      currentValue: 65,
-      progressPercent: 81,
-      targetDate: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      createdAt: oneMonthAgo.toISOString(),
-      updatedAt: now.toISOString(),
-      completedAt: null,
-      lastSessionDate: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      totalSessionsAddressed: 6,
-    },
-    {
-      id: "goal-fine-motor-004",
-      childId,
-      name: "Pencil grasp",
-      description: "Develop appropriate pencil grasp for pre-writing activities",
-      targetDescription: "Child will maintain tripod grasp on writing utensil for 5+ minutes during structured activities",
-      therapyType: "OT",
-      status: "paused",
-      targetValue: 100,
-      currentValue: 50,
-      progressPercent: 50,
-      targetDate: null,
-      createdAt: threeMonthsAgo.toISOString(),
-      updatedAt: oneMonthAgo.toISOString(),
-      completedAt: null,
-      lastSessionDate: new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] as string,
-      totalSessionsAddressed: 8,
-    },
-    {
-      id: "goal-attention-005",
-      childId,
-      name: "Sustained attention",
-      description: "Increase duration of sustained attention to preferred activities",
-      targetDescription: "Child will maintain attention to a single activity for 10+ minutes without prompts",
-      therapyType: "ABA",
-      status: "completed",
-      targetValue: 100,
-      currentValue: 100,
-      progressPercent: 100,
-      targetDate: oneMonthAgo.toISOString().split("T")[0] as string,
-      createdAt: threeMonthsAgo.toISOString(),
-      updatedAt: oneMonthAgo.toISOString(),
-      completedAt: oneMonthAgo.toISOString(),
-      lastSessionDate: oneMonthAgo.toISOString().split("T")[0] as string,
-      totalSessionsAddressed: 15,
-    },
-    {
-      id: "goal-turn-taking-006",
-      childId,
-      name: "Turn-taking in play",
-      description: "Engage in reciprocal play with turn-taking",
-      targetDescription: "Child will take turns during play activities with a peer for 5+ exchanges",
-      therapyType: "ABA",
-      status: "completed",
-      targetValue: 100,
-      currentValue: 100,
-      progressPercent: 100,
-      targetDate: twoMonthsAgo.toISOString().split("T")[0] as string,
-      createdAt: threeMonthsAgo.toISOString(),
-      updatedAt: twoMonthsAgo.toISOString(),
-      completedAt: twoMonthsAgo.toISOString(),
-      lastSessionDate: twoMonthsAgo.toISOString().split("T")[0] as string,
-      totalSessionsAddressed: 10,
-    },
-  ];
 }
 
 // ============================================================================
