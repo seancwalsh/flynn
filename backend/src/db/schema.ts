@@ -390,3 +390,126 @@ export type NewNotificationPreference = typeof notificationPreferences.$inferIns
 
 export type NotificationLog = typeof notificationLogs.$inferSelect;
 export type NewNotificationLog = typeof notificationLogs.$inferInsert;
+
+// ============================================================================
+// THERAPY & GOALS (Phase 2c - Cross-Therapy Coordination)
+// ============================================================================
+
+// Therapy types
+export type TherapyType = "aac" | "aba" | "ot" | "slp" | "pt" | "other";
+
+// Goals that therapists and caregivers set for children
+export const goals = pgTable("goals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  // Goal details
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  therapyType: varchar("therapy_type", { length: 20 }).notNull(), // aac, aba, ot, slp, pt
+  category: varchar("category", { length: 50 }), // motor, communication, social, etc.
+  
+  // Progress tracking
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, achieved, paused, discontinued
+  targetDate: date("target_date"),
+  progressPercent: integer("progress_percent").default(0),
+  
+  // Who created/owns this goal
+  createdBy: uuid("created_by").references(() => users.id),
+  therapistId: uuid("therapist_id").references(() => therapists.id),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("goals_child_idx").on(table.childId),
+  index("goals_status_idx").on(table.status),
+  index("goals_therapy_type_idx").on(table.therapyType),
+]);
+
+// Link related goals across therapies
+export const goalLinks = pgTable("goal_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  
+  // The two linked goals
+  goalId: uuid("goal_id")
+    .references(() => goals.id, { onDelete: "cascade" })
+    .notNull(),
+  linkedGoalId: uuid("linked_goal_id")
+    .references(() => goals.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  // Relationship type
+  relationshipType: varchar("relationship_type", { length: 30 }).notNull(), // supports, conflicts, prerequisite, related
+  
+  // Notes about the relationship
+  notes: text("notes"),
+  
+  // Who identified this link
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("goal_links_goal_idx").on(table.goalId),
+  index("goal_links_linked_idx").on(table.linkedGoalId),
+]);
+
+// Therapy sessions (for progress tracking)
+export const therapySessions = pgTable("therapy_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  therapistId: uuid("therapist_id")
+    .references(() => therapists.id, { onDelete: "set null" }),
+  
+  // Session details
+  therapyType: varchar("therapy_type", { length: 20 }).notNull(),
+  sessionDate: date("session_date").notNull(),
+  durationMinutes: integer("duration_minutes"),
+  
+  // Notes and progress
+  notes: text("notes"),
+  goalsWorkedOn: jsonb("goals_worked_on"), // [{goalId, progress, notes}]
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("therapy_sessions_child_idx").on(table.childId),
+  index("therapy_sessions_date_idx").on(table.sessionDate),
+]);
+
+// Goal progress entries (for trend tracking)
+export const goalProgress = pgTable("goal_progress", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  goalId: uuid("goal_id")
+    .references(() => goals.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  // Progress update
+  date: date("date").notNull(),
+  progressPercent: integer("progress_percent").notNull(),
+  notes: text("notes"),
+  
+  // Related session if applicable
+  sessionId: uuid("session_id").references(() => therapySessions.id, { onDelete: "set null" }),
+  
+  // Who logged this
+  loggedBy: uuid("logged_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("goal_progress_goal_idx").on(table.goalId),
+  index("goal_progress_date_idx").on(table.date),
+]);
+
+export type Goal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
+
+export type GoalLink = typeof goalLinks.$inferSelect;
+export type NewGoalLink = typeof goalLinks.$inferInsert;
+
+export type TherapySession = typeof therapySessions.$inferSelect;
+export type NewTherapySession = typeof therapySessions.$inferInsert;
+
+export type GoalProgressEntry = typeof goalProgress.$inferSelect;
+export type NewGoalProgressEntry = typeof goalProgress.$inferInsert;
