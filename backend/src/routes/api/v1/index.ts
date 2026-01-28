@@ -8,6 +8,7 @@ import { usageLogsRoutes } from "./usage-logs";
 import { insightsRoutes } from "./insights";
 import { conversationsRoutes } from "./conversations";
 import { notificationsRoutes } from "./notifications";
+import { authRoutes } from "./auth";
 
 export const apiV1Routes = new Hono();
 
@@ -19,6 +20,9 @@ apiV1Routes.get("/", (c) => {
     documentation: "/api/v1/docs",
   });
 });
+
+// Auth routes (handles its own auth - webhook is public, /me requires auth)
+apiV1Routes.route("/auth", authRoutes);
 
 // Apply authentication to ALL routes below this point
 // This is a critical security measure - all API routes require valid JWT

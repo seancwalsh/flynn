@@ -14,6 +14,10 @@ const envSchema = z.object({
   
   // Anthropic API
   ANTHROPIC_API_KEY: z.string().optional(),
+
+  // Clerk
+  CLERK_PUBLISHABLE_KEY: z.string().optional(),
+  CLERK_SECRET_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

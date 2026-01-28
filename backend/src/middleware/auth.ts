@@ -5,13 +5,16 @@
  */
 
 import type { Context, Next, MiddlewareHandler } from "hono";
-import { createClerkClient } from "@clerk/backend";
+import { createClerkClient, verifyToken } from "@clerk/backend";
 import { AppError } from "./error-handler";
 import { findUserByClerkId, findUserByEmail } from "../services/auth";
 import { env } from "../config/env";
 
 // Initialize Clerk client
-const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
+const clerk = createClerkClient({
+  secretKey: env.CLERK_SECRET_KEY,
+  publishableKey: env.CLERK_PUBLISHABLE_KEY,
+});
 
 // Extend Hono's context to include user info
 declare module "hono" {
@@ -31,24 +34,83 @@ declare module "hono" {
  */
 async function verifyClerkToken(token: string): Promise<{ userId: string; email: string } | null> {
   try {
+    if (!env.CLERK_SECRET_KEY) {
+      console.error("CLERK_SECRET_KEY is not configured");
+      return null;
+    }
+
     // Verify the session token with Clerk
-    const { sub } = await clerk.verifyToken(token);
-    
+    const { sub } = await verifyToken(token, {
+      secretKey: env.CLERK_SECRET_KEY,
+      authorizedParties: ["http://localhost:3001", "http://localhost:3000"],
+      clockSkewInMs: 10000, // Allow 10 seconds of clock skew
+    });
+
     if (!sub) {
       return null;
     }
-    
+
     // Get user details from Clerk
     const clerkUser = await clerk.users.getUser(sub);
     const email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress;
-    
+
     if (!email) {
       return null;
     }
-    
+
     return { userId: sub, email };
   } catch (error) {
-    console.error("Clerk token verification failed:", error);
+    console.error("Clerk token verification failed:");
+    if (error instanceof Error) {
+      console.error("  Message:", error.message);
+      console.error("  Name:", error.name);
+      if ('errors' in error) {
+        console.error("  Errors:", JSON.stringify((error as any).errors, null, 2));
+      }
+    } else {
+      console.error("  Error:", error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Alternative: Verify using authenticateRequest (handles more edge cases)
+ */
+async function verifyClerkRequest(req: Request): Promise<{ userId: string; email: string } | null> {
+  try {
+    if (!env.CLERK_SECRET_KEY || !env.CLERK_PUBLISHABLE_KEY) {
+      console.error("Clerk keys not configured");
+      return null;
+    }
+
+    const requestState = await clerk.authenticateRequest(req, {
+      authorizedParties: ["http://localhost:3001", "http://localhost:3000"],
+    });
+
+    if (!requestState.isAuthenticated) {
+      console.error("Clerk auth failed:", requestState.reason, requestState.message);
+      return null;
+    }
+
+    const { userId } = requestState.toAuth();
+
+    // Get user details from Clerk
+    const clerkUser = await clerk.users.getUser(userId);
+    const email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress;
+
+    if (!email) {
+      return null;
+    }
+
+    return { userId, email };
+  } catch (error) {
+    console.error("Clerk authenticateRequest failed:");
+    if (error instanceof Error) {
+      console.error("  Message:", error.message);
+    } else {
+      console.error("  Error:", error);
+    }
     return null;
   }
 }
@@ -58,22 +120,28 @@ async function verifyClerkToken(token: string): Promise<{ userId: string; email:
  */
 export function requireAuth(): MiddlewareHandler {
   return async (c: Context, next: Next) => {
-    const authHeader = c.req.header("authorization");
-    
-    if (!authHeader) {
-      throw new AppError("Authorization header required", 401, "UNAUTHORIZED");
+    // Try authenticateRequest first (more robust)
+    let payload = await verifyClerkRequest(c.req.raw);
+
+    // Fallback to token-based verification
+    if (!payload) {
+      const authHeader = c.req.header("authorization");
+
+      if (!authHeader) {
+        throw new AppError("Authorization header required", 401, "UNAUTHORIZED");
+      }
+
+      const parts = authHeader.split(" ");
+      const scheme = parts[0];
+      const token = parts[1];
+
+      if (parts.length !== 2 || !scheme || scheme.toLowerCase() !== "bearer" || !token) {
+        throw new AppError("Invalid authorization format. Use: Bearer <token>", 401, "INVALID_AUTH_FORMAT");
+      }
+
+      payload = await verifyClerkToken(token);
     }
-    
-    const parts = authHeader.split(" ");
-    const scheme = parts[0];
-    const token = parts[1];
-    
-    if (parts.length !== 2 || !scheme || scheme.toLowerCase() !== "bearer" || !token) {
-      throw new AppError("Invalid authorization format. Use: Bearer <token>", 401, "INVALID_AUTH_FORMAT");
-    }
-    
-    const payload = await verifyClerkToken(token);
-    
+
     if (!payload) {
       throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");
     }

@@ -181,12 +181,62 @@ authRoutes.delete("/device", requireAuth(), authRateLimiter, zValidator("json", 
  */
 authRoutes.get("/me", requireAuth(), async (c) => {
   const user = c.get("user");
-  
+
   return c.json({
     user: {
       id: user.id,
       email: user.email,
       role: user.role,
+    },
+  });
+});
+
+/**
+ * GET /debug-token - Debug token verification (development only)
+ * Returns detailed info about token verification - NO AUTH REQUIRED
+ */
+authRoutes.get("/debug-token", async (c) => {
+  if (env.NODE_ENV === "production") {
+    return c.json({ error: "Not available in production" }, 403);
+  }
+
+  const authHeader = c.req.header("authorization");
+  if (!authHeader) {
+    return c.json({ error: "No authorization header" }, 400);
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+
+  // Decode JWT without verification to see contents
+  const [header, payload] = token.split(".").slice(0, 2);
+  let decodedHeader, decodedPayload;
+  try {
+    decodedHeader = JSON.parse(atob(header));
+    decodedPayload = JSON.parse(atob(payload));
+  } catch (e) {
+    return c.json({ error: "Invalid JWT format" }, 400);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const isExpired = decodedPayload.exp < now;
+  const expiresIn = decodedPayload.exp - now;
+
+  return c.json({
+    header: decodedHeader,
+    payload: decodedPayload,
+    analysis: {
+      isExpired,
+      expiresIn: `${expiresIn} seconds`,
+      currentTime: now,
+      tokenExp: decodedPayload.exp,
+      subject: decodedPayload.sub,
+      issuer: decodedPayload.iss,
+      authorizedParty: decodedPayload.azp,
+    },
+    env: {
+      hasSecretKey: !!env.CLERK_SECRET_KEY,
+      hasPublishableKey: !!env.CLERK_PUBLISHABLE_KEY,
+      secretKeyPrefix: env.CLERK_SECRET_KEY?.substring(0, 10) + "...",
     },
   });
 });
