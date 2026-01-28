@@ -33,3 +33,4 @@ npm-debug.log*
 
 # Generated files
 src/routeTree.gen.ts
+.playwright-mcp/
