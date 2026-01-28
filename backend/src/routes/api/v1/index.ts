@@ -9,6 +9,7 @@ import { insightsRoutes } from "./insights";
 import { conversationsRoutes } from "./conversations";
 import { notificationsRoutes } from "./notifications";
 import { authRoutes } from "./auth";
+import { dashboardRoutes } from "./dashboard";
 
 export const apiV1Routes = new Hono();
 
@@ -31,6 +32,7 @@ apiV1Routes.use("/*", requireAuth());
 // Mount all resource routes (all protected by requireAuth above)
 apiV1Routes.route("/families", familiesRoutes);
 apiV1Routes.route("/children", childrenRoutes);
+apiV1Routes.route("/children", dashboardRoutes); // Dashboard endpoints: /children/:id/dashboard, /children/:id/today, /children/:id/insights/refresh
 apiV1Routes.route("/caregivers", caregiversRoutes);
 apiV1Routes.route("/therapists", therapistsRoutes);
 apiV1Routes.route("/usage-logs", usageLogsRoutes);
