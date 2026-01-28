@@ -9,7 +9,7 @@
  */
 
 import * as React from "react";
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Send, Square, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
@@ -19,8 +19,12 @@ export interface ChatInputProps {
   onSend: (content: string) => void;
   /** Called when the stop button is clicked */
   onStop?: () => void;
+  /** Whether the chat is loading */
+  isLoading?: boolean;
   /** Whether the chat is currently streaming */
   isStreaming?: boolean;
+  /** Called when stop streaming button is clicked */
+  onStopStreaming?: () => void;
   /** Whether the input should be disabled */
   disabled?: boolean;
   /** Placeholder text */
@@ -29,15 +33,31 @@ export interface ChatInputProps {
   className?: string;
 }
 
-export function ChatInput({
-  onSend,
-  onStop,
-  isStreaming = false,
-  disabled = false,
-  placeholder = "Type a message...",
-  className,
-}: ChatInputProps) {
+export interface ChatInputHandle {
+  focus: () => void;
+}
+
+export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
+  {
+    onSend,
+    onStop,
+    onStopStreaming,
+    isLoading = false,
+    isStreaming = false,
+    disabled = false,
+    placeholder = "Type a message...",
+    className,
+  },
+  ref
+) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose focus method via ref
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus();
+    },
+  }));
   const [value, setValue] = React.useState("");
 
   // Auto-resize textarea
@@ -122,7 +142,7 @@ export function ChatInput({
             type="button"
             variant="destructive"
             size="icon"
-            onClick={onStop}
+            onClick={onStopStreaming || onStop}
             className="h-12 w-12 shrink-0 rounded-full"
             aria-label="Stop generating"
           >
@@ -134,11 +154,11 @@ export function ChatInput({
             variant="default"
             size="icon"
             onClick={handleSubmit}
-            disabled={!canSend}
+            disabled={!canSend || isLoading}
             className="h-12 w-12 shrink-0 rounded-full"
             aria-label="Send message"
           >
-            {disabled && !isStreaming ? (
+            {(disabled || isLoading) && !isStreaming ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <Send className="h-5 w-5" />
@@ -156,6 +176,6 @@ export function ChatInput({
       </div>
     </div>
   );
-}
+});
 
 export default ChatInput;

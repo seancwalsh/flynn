@@ -17,7 +17,7 @@
 export { ChatPanel, type ChatPanelProps, type ChatPanelMode } from "./ChatPanel";
 export { MessageList, type MessageListProps } from "./MessageList";
 export { MessageBubble, type MessageBubbleProps } from "./MessageBubble";
-export { ChatInput, type ChatInputProps } from "./ChatInput";
+export { ChatInput, type ChatInputProps, type ChatInputHandle } from "./ChatInput";
 export { ConversationList, type ConversationListProps } from "./ConversationList";
 
 // Hook

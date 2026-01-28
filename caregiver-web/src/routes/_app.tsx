@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -30,7 +30,7 @@ function AppLayout() {
   }
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     navigate({ to: "/login" });
   };
 

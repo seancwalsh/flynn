@@ -16,8 +16,6 @@ import {
   AlertTriangle,
   Info,
   AlertCircle,
-  TrendingDown,
-  TrendingUp,
   X,
   ChevronDown,
   ChevronUp,
@@ -64,19 +62,6 @@ function getSeverityIcon(severity?: string | null): React.ReactNode {
     case "info":
     default:
       return <Info className={cn(iconClass, "text-blue-500")} />;
-  }
-}
-
-function getTypeIcon(type: string): React.ReactNode {
-  const iconClass = "h-4 w-4";
-  switch (type) {
-    case "regression_alert":
-    case "anomaly":
-      return <TrendingDown className={cn(iconClass, "text-red-500")} />;
-    case "milestone":
-      return <TrendingUp className={cn(iconClass, "text-green-500")} />;
-    default:
-      return null;
   }
 }
 
