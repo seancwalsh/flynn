@@ -9,9 +9,13 @@ import "./index.css";
 
 // Get Clerk publishable key from environment
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const hasClerkKey = Boolean(CLERK_PUBLISHABLE_KEY);
 
-if (!CLERK_PUBLISHABLE_KEY) {
-  console.warn("Missing VITE_CLERK_PUBLISHABLE_KEY - Auth will not work");
+if (!hasClerkKey) {
+  console.warn(
+    "Missing VITE_CLERK_PUBLISHABLE_KEY - Running without authentication. " +
+      "Copy .env.example to .env and add your Clerk key for full functionality."
+  );
 }
 
 // Create a query client
@@ -40,18 +44,33 @@ declare module "@tanstack/react-router" {
   }
 }
 
+// Wrapper component that conditionally includes Clerk
+function AppWithProviders() {
+  const content = (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+
+  if (hasClerkKey) {
+    return (
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY!}>
+        {content}
+      </ClerkProvider>
+    );
+  }
+
+  return content;
+}
+
 // Render the app
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY || ""}>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <RouterProvider router={router} />
-          </AuthProvider>
-        </QueryClientProvider>
-      </ClerkProvider>
+      <AppWithProviders />
     </React.StrictMode>
   );
 }

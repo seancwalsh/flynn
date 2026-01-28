@@ -13,6 +13,9 @@ import {
 import { useAuth as useClerkAuth, useUser } from "@clerk/clerk-react";
 import { authApi, type AuthUser } from "./api";
 
+// Check if Clerk is configured
+const hasClerkKey = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
@@ -25,7 +28,8 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+// Internal provider that uses Clerk hooks (only used when Clerk is configured)
+function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, signOut: clerkSignOut, getToken } = useClerkAuth();
   const { user: clerkUser } = useUser();
   const [state, setState] = useState<AuthState>({
@@ -89,6 +93,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// Mock provider for when Clerk is not configured
+function MockAuthProvider({ children }: { children: ReactNode }) {
+  const value: AuthContextValue = {
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    signOut: async () => {
+      // No-op when Clerk is not configured
+    },
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  if (!hasClerkKey) {
+    return <MockAuthProvider>{children}</MockAuthProvider>;
+  }
+  return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
 }
 
 export function useAuth() {
