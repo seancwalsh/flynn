@@ -7,11 +7,11 @@
 export * from "./auth";
 export * from "./chat";
 export * from "./insights";
+export * from "./dashboard";
 
 import { authHandlers } from "./auth";
 import { chatHandlers } from "./chat";
+import { dashboardHandlers } from "./dashboard";
 
 // Combined default handlers for all endpoints
-// Note: insights handlers are exported but not included by default
-// because InsightsFeed tests use direct fetch mocking
-export const handlers = [...authHandlers, ...chatHandlers];
+export const handlers = [...authHandlers, ...chatHandlers, ...dashboardHandlers];
