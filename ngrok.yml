@@ -1,0 +1,9 @@
+version: "2"
+authtoken: YOUR_AUTH_TOKEN_HERE
+tunnels:
+  backend:
+    proto: http
+    addr: 3000
+  caregiver-web:
+    proto: http
+    addr: 3001

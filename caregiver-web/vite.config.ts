@@ -12,5 +12,6 @@ export default defineConfig({
   },
   server: {
     port: 3001,
+    host: true, // Listen on all network interfaces for mobile testing
   },
 });
