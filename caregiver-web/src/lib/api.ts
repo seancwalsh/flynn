@@ -155,3 +155,86 @@ export const usageStatsApi = {
     return fetchApi<{ data: UsageStats }>(`/usage-logs/stats/${childId}`);
   },
 };
+
+// Insights types
+export type InsightType =
+  | "daily_digest"
+  | "weekly_report"
+  | "regression_alert"
+  | "milestone"
+  | "suggestion"
+  | "anomaly";
+
+export type InsightSeverity = "info" | "warning" | "critical";
+
+export interface Insight {
+  id: string;
+  childId: string;
+  type: InsightType;
+  severity?: InsightSeverity;
+  title?: string;
+  body?: string;
+  content: Record<string, unknown>;
+  generatedAt: string;
+  readAt?: string | null;
+  dismissedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InsightsListResponse {
+  data: Insight[];
+  meta: {
+    total: number;
+    unreadCount: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+// Insights API
+export const insightsApi = {
+  async list(params?: {
+    childId?: string;
+    type?: InsightType;
+    severity?: InsightSeverity;
+    unreadOnly?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<InsightsListResponse>> {
+    const queryParams = new URLSearchParams();
+    if (params?.childId) queryParams.set("childId", params.childId);
+    if (params?.type) queryParams.set("type", params.type);
+    if (params?.severity) queryParams.set("severity", params.severity);
+    if (params?.unreadOnly) queryParams.set("unreadOnly", "true");
+    if (params?.limit) queryParams.set("limit", params.limit.toString());
+    if (params?.offset) queryParams.set("offset", params.offset.toString());
+
+    const query = queryParams.toString();
+    return fetchApi<InsightsListResponse>(
+      `/insights${query ? `?${query}` : ""}`
+    );
+  },
+
+  async get(id: string): Promise<ApiResponse<{ data: Insight }>> {
+    return fetchApi<{ data: Insight }>(`/insights/${id}`);
+  },
+
+  async markAsRead(id: string): Promise<ApiResponse<{ data: Insight }>> {
+    return fetchApi<{ data: Insight }>(`/insights/${id}/read`, {
+      method: "PATCH",
+    });
+  },
+
+  async dismiss(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    return fetchApi<{ success: boolean }>(`/insights/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  async getUnreadCount(
+    childId: string
+  ): Promise<ApiResponse<{ count: number }>> {
+    return fetchApi<{ count: number }>(`/insights/unread-count/${childId}`);
+  },
+};

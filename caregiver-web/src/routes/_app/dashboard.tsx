@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import {
   childrenApi,
   usageStatsApi,
+  insightsApi,
   type Child,
-  type UsageStats,
+  type Insight,
 } from "~/lib/api";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -22,6 +23,8 @@ interface DashboardStats {
 function DashboardPage() {
   const { user } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [stats, setStats] = useState<DashboardStats>({
     childrenCount: 0,
     totalSymbolsLearned: 0,
@@ -70,10 +73,39 @@ function DashboardPage() {
         totalSessions: sessionsThisWeek,
         avgDailyUse,
       });
+
+      // Get recent insights
+      const insightsResponse = await insightsApi.list({
+        limit: 5,
+        unreadOnly: false,
+      });
+      if (insightsResponse.data) {
+        setInsights(insightsResponse.data.data);
+        setUnreadCount(insightsResponse.data.meta.unreadCount);
+      }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMarkInsightRead = async (id: string) => {
+    await insightsApi.markAsRead(id);
+    setInsights(
+      insights.map((insight) =>
+        insight.id === id ? { ...insight, readAt: new Date().toISOString() } : insight
+      )
+    );
+    setUnreadCount(Math.max(0, unreadCount - 1));
+  };
+
+  const handleDismissInsight = async (id: string) => {
+    await insightsApi.dismiss(id);
+    setInsights(insights.filter((insight) => insight.id !== id));
+    const insight = insights.find((i) => i.id === id);
+    if (insight && !insight.readAt) {
+      setUnreadCount(Math.max(0, unreadCount - 1));
     }
   };
 
@@ -353,6 +385,106 @@ function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Recent Insights */}
+      {hasChildren && insights.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Recent Insights
+              {unreadCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {insights.map((insight) => (
+              <div
+                key={insight.id}
+                className={`card ${
+                  !insight.readAt ? "border-l-4 border-l-primary-500" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          insight.severity === "critical"
+                            ? "bg-red-100 text-red-800"
+                            : insight.severity === "warning"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {insight.type.replace("_", " ")}
+                      </span>
+                      {!insight.readAt && (
+                        <span className="inline-flex w-2 h-2 bg-primary-600 rounded-full"></span>
+                      )}
+                    </div>
+                    {insight.title && (
+                      <h3 className="font-medium text-gray-900 mb-1">
+                        {insight.title}
+                      </h3>
+                    )}
+                    {insight.body && (
+                      <p className="text-sm text-gray-600">{insight.body}</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-2">
+                      {new Date(insight.generatedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2 ml-4">
+                    {!insight.readAt && (
+                      <button
+                        onClick={() => handleMarkInsightRead(insight.id)}
+                        className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                        title="Mark as read"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDismissInsight(insight.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Dismiss"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
