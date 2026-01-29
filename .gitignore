@@ -29,3 +29,9 @@ coverage/
 *.xcuserstate
 xcuserdata/
 DerivedData/
+
+# Claude Code
+.claude/
+
+# Playwright
+.playwright-mcp/
