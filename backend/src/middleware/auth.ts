@@ -5,7 +5,7 @@
  */
 
 import type { Context, Next, MiddlewareHandler } from "hono";
-import { createClerkClient, verifyToken } from "@clerk/backend";
+import { createClerkClient } from "@clerk/backend";
 import { AppError } from "./error-handler";
 import { findUserByClerkId, findUserByEmail } from "../services/auth";
 import { env } from "../config/env";
@@ -39,9 +39,8 @@ async function verifyClerkToken(token: string): Promise<{ userId: string; email:
       return null;
     }
 
-    // Verify the session token with Clerk
-    const { sub } = await verifyToken(token, {
-      secretKey: env.CLERK_SECRET_KEY,
+    // Verify the session token with Clerk using the client method
+    const { sub } = await clerk.verifyToken(token, {
       authorizedParties: ["http://localhost:3001", "http://localhost:3000"],
       clockSkewInMs: 10000, // Allow 10 seconds of clock skew
     });
@@ -75,41 +74,20 @@ async function verifyClerkToken(token: string): Promise<{ userId: string; email:
 }
 
 /**
- * Alternative: Verify using authenticateRequest (handles more edge cases)
+ * Alternative: Get user email from Clerk API using userId
+ * (authenticateRequest is deprecated in Clerk SDK v2)
  */
-async function verifyClerkRequest(req: Request): Promise<{ userId: string; email: string } | null> {
+async function getUserEmailFromClerk(userId: string): Promise<string | null> {
   try {
-    if (!env.CLERK_SECRET_KEY || !env.CLERK_PUBLISHABLE_KEY) {
-      console.error("Clerk keys not configured");
-      return null;
-    }
-
-    const requestState = await clerk.authenticateRequest(req, {
-      authorizedParties: ["http://localhost:3001", "http://localhost:3000"],
-    });
-
-    if (!requestState.isAuthenticated) {
-      console.error("Clerk auth failed:", requestState.reason, requestState.message);
-      return null;
-    }
-
-    const { userId } = requestState.toAuth();
-
-    // Get user details from Clerk
     const clerkUser = await clerk.users.getUser(userId);
-    const email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress;
-
-    if (!email) {
-      return null;
-    }
-
-    return { userId, email };
+    const email = clerkUser.emailAddresses.find(
+      e => e.id === clerkUser.primaryEmailAddressId
+    )?.emailAddress;
+    return email || null;
   } catch (error) {
-    console.error("Clerk authenticateRequest failed:");
+    console.error("Failed to get user email from Clerk:");
     if (error instanceof Error) {
       console.error("  Message:", error.message);
-    } else {
-      console.error("  Error:", error);
     }
     return null;
   }
@@ -120,27 +98,22 @@ async function verifyClerkRequest(req: Request): Promise<{ userId: string; email
  */
 export function requireAuth(): MiddlewareHandler {
   return async (c: Context, next: Next) => {
-    // Try authenticateRequest first (more robust)
-    let payload = await verifyClerkRequest(c.req.raw);
+    // Get token from Authorization header
+    const authHeader = c.req.header("authorization");
 
-    // Fallback to token-based verification
-    if (!payload) {
-      const authHeader = c.req.header("authorization");
-
-      if (!authHeader) {
-        throw new AppError("Authorization header required", 401, "UNAUTHORIZED");
-      }
-
-      const parts = authHeader.split(" ");
-      const scheme = parts[0];
-      const token = parts[1];
-
-      if (parts.length !== 2 || !scheme || scheme.toLowerCase() !== "bearer" || !token) {
-        throw new AppError("Invalid authorization format. Use: Bearer <token>", 401, "INVALID_AUTH_FORMAT");
-      }
-
-      payload = await verifyClerkToken(token);
+    if (!authHeader) {
+      throw new AppError("Authorization header required", 401, "UNAUTHORIZED");
     }
+
+    const parts = authHeader.split(" ");
+    const scheme = parts[0];
+    const token = parts[1];
+
+    if (parts.length !== 2 || !scheme || scheme.toLowerCase() !== "bearer" || !token) {
+      throw new AppError("Invalid authorization format. Use: Bearer <token>", 401, "INVALID_AUTH_FORMAT");
+    }
+
+    const payload = await verifyClerkToken(token);
 
     if (!payload) {
       throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");

@@ -145,17 +145,10 @@ function createMockClient(options: {
 describe("ClaudeService", () => {
   describe("constructor", () => {
     test("throws error when API key is missing", () => {
-      // Save and clear env
-      const originalKey = process.env["ANTHROPIC_API_KEY"];
-      delete process.env["ANTHROPIC_API_KEY"];
-
-      expect(() => new ClaudeService()).toThrow(ClaudeError);
-      expect(() => new ClaudeService()).toThrow("ANTHROPIC_API_KEY is required");
-
-      // Restore env
-      if (originalKey) {
-        process.env["ANTHROPIC_API_KEY"] = originalKey;
-      }
+      // Pass empty string to simulate missing API key
+      // (undefined would fall back to env.ANTHROPIC_API_KEY)
+      expect(() => new ClaudeService({ apiKey: "" })).toThrow(ClaudeError);
+      expect(() => new ClaudeService({ apiKey: "" })).toThrow("ANTHROPIC_API_KEY is required");
     });
 
     test("accepts API key via config", () => {
