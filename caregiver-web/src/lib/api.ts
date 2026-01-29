@@ -136,3 +136,22 @@ export const familiesApi = {
     return fetchApi<{ data: Family }>(`/families/${id}`);
   },
 };
+
+// Usage Stats types
+export interface UsageStats {
+  totalLogs: number;
+  uniqueSymbols: number;
+  topSymbols: Array<{
+    symbolId: string;
+    count: number;
+  }>;
+}
+
+// Usage Stats API
+export const usageStatsApi = {
+  async getChildStats(
+    childId: string
+  ): Promise<ApiResponse<{ data: UsageStats }>> {
+    return fetchApi<{ data: UsageStats }>(`/usage-logs/stats/${childId}`);
+  },
+};
