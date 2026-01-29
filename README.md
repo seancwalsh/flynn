@@ -1,72 +1,136 @@
-# Flynn AAC Backend
+# Flynn AAC
 
-Backend API for Flynn AAC - an AI-powered platform for child communication development insights.
+AI-powered platform for child communication development insights.
 
-## Tech Stack
+## Overview
 
-- **Runtime:** [Bun](https://bun.sh/) - Fast JavaScript runtime
-- **Framework:** [Hono](https://hono.dev/) - Lightweight, fast web framework
-- **Database:** PostgreSQL with [Drizzle ORM](https://orm.drizzle.team/)
-- **Validation:** [Zod](https://zod.dev/) - TypeScript-first schema validation
-- **Testing:** Bun's built-in test runner
+Flynn is a comprehensive AAC (Augmentative and Alternative Communication) platform with:
+- 📱 **iOS AAC App** - Native Swift app for child communication
+- 🌐 **Caregiver Web Portal** - React-based insights dashboard
+- 🚀 **Backend API** - Bun + Hono REST API
 
 ## Quick Start
 
 ### Prerequisites
 
-- [Bun](https://bun.sh/) (v1.0+)
 - [Docker](https://www.docker.com/) & Docker Compose
+- Git
 
-### One-Command Setup
+*Optional for native development:*
+- [Bun](https://bun.sh/) (v1.0+) - Backend
+- Node.js 20+ - Frontend
+- Xcode 15+ - iOS (macOS only)
+
+### One-Command Setup (Recommended)
 
 ```bash
-# Install deps, start docker, run migrations
-make setup
+# Clone repository
+git clone <repository-url>
+cd flynn-app
 
-# Then start developing
-make dev
+# Copy environment template
+cp .env.example .env
+# Edit .env and add your API keys (Clerk, Anthropic)
+
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
 ```
 
-Or manually:
+Access points:
+- Backend API: http://localhost:3000
+- Caregiver Portal: http://localhost:3001
+- Health Check: http://localhost:3000/health
+
+### Alternative: Native Development
 
 ```bash
+# Backend
+cd backend
 bun install
-docker compose up -d
+docker compose up -d postgres redis
 bun run db:migrate
 bun run dev
+
+# Caregiver Web (new terminal)
+cd caregiver-web
+npm install
+npm run dev
 ```
 
-### Running Tests
+## Tech Stack
+
+### Backend
+- **Runtime:** [Bun](https://bun.sh/) - Fast JavaScript runtime
+- **Framework:** [Hono](https://hono.dev/) - Lightweight web framework
+- **Database:** PostgreSQL 16 with pgvector
+- **ORM:** [Drizzle](https://orm.drizzle.team/)
+- **Auth:** Clerk
+- **Cache:** Redis 7
+
+### Caregiver Web
+- **Framework:** React 18.3
+- **Build:** Vite 6.0
+- **Router:** TanStack Router
+- **State:** TanStack Query
+- **Styling:** Tailwind CSS
+- **Testing:** Vitest, Playwright
+
+### iOS App
+- **Language:** Swift 5.9
+- **Framework:** SwiftUI
+- **Min Version:** iOS 17.0+
+- **Auth:** Clerk iOS SDK
+
+## Common Commands
 
 ```bash
-make test
-# or: docker compose up -d postgres-test && bun test
+# Start all services
+docker compose up -d
+
+# View logs (all services)
+docker compose logs -f
+
+# View specific service logs
+docker compose logs -f backend
+docker compose logs -f caregiver-web
+
+# Stop all services
+docker compose down
+
+# Clean restart (removes data)
+docker compose down -v && docker compose up -d
+
+# Run backend tests
+docker compose exec backend bun test
+
+# Run frontend tests
+docker compose exec caregiver-web npm run test
+
+# Database shell
+docker compose exec postgres psql -U postgres -d flynn_aac
+
+# Rebuild after changes
+docker compose up -d --build
 ```
 
-The API will be available at `http://localhost:3000`.
-
-### Common Commands
-
-| Command | Description |
-|---------|-------------|
-| `make setup` | First-time setup (deps + docker + migrations) |
-| `make dev` | Start docker + dev server |
-| `make test` | Run tests with test database |
-| `make stop` | Stop docker services |
-| `make logs` | View docker logs |
-| `make db-shell` | Open psql to dev database |
-| `make clean` | Stop + remove all data |
+For more commands and workflows, see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Environment Variables
 
-Create a `.env` file (or use defaults):
+Copy `.env.example` to `.env` and configure:
 
-```env
-NODE_ENV=development
-PORT=3000
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/flynn_aac
-REDIS_URL=redis://localhost:6379
-LOG_LEVEL=info
+```bash
+# Required
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional
+LINEAR_API_KEY=lin_api_...
 ```
 
 ## API Endpoints
@@ -168,34 +232,15 @@ bun test --coverage
 - `usage_logs` - Symbol usage tracking (synced from CloudKit)
 - `insights` - AI-generated daily digests, reports, and alerts
 
-## Docker
+## Services
 
-### Development
-
-```bash
-# Start all services (Postgres + Redis)
-docker compose up -d
-
-# Start only Postgres
-docker compose up -d postgres
-
-# View logs
-docker compose logs -f
-
-# Stop services
-docker compose down
-
-# Reset data
-docker compose down -v
-```
-
-### Services
-
-| Service | Port | Purpose |
-|---------|------|---------|
-| `postgres` | 5432 | Primary database |
-| `postgres-test` | 5433 | Test database (ephemeral) |
-| `redis` | 6379 | Cache/queue (future) |
+| Service | Container | Port | Description |
+|---------|-----------|------|-------------|
+| Backend API | `flynn-aac-backend` | 3000 | Hono REST API |
+| Caregiver Web | `flynn-aac-caregiver-web` | 3001 | React portal |
+| PostgreSQL | `flynn-aac-postgres` | 5434 | Main database |
+| PostgreSQL Test | `flynn-aac-postgres-test` | 5433 | Test database |
+| Redis | `flynn-aac-redis` | 6379 | Cache & queues |
 
 ## Architecture
 
