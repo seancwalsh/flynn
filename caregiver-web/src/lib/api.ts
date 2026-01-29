@@ -74,19 +74,65 @@ export interface ChildWithProgress extends Child {
 }
 
 // Children API
+export interface CreateChildInput {
+  familyId: string;
+  name: string;
+  birthDate?: string;
+}
+
+export interface UpdateChildInput {
+  name?: string;
+  birthDate?: string;
+}
+
 export const childrenApi = {
-  async list(): Promise<ApiResponse<{ children: Child[] }>> {
-    return fetchApi<{ children: Child[] }>("/children");
+  async list(): Promise<ApiResponse<{ data: Child[] }>> {
+    return fetchApi<{ data: Child[] }>("/children");
   },
 
-  async get(id: string): Promise<ApiResponse<{ child: ChildWithProgress }>> {
-    return fetchApi<{ child: ChildWithProgress }>(`/children/${id}`);
+  async get(id: string): Promise<ApiResponse<{ data: ChildWithProgress }>> {
+    return fetchApi<{ data: ChildWithProgress }>(`/children/${id}`);
+  },
+
+  async create(input: CreateChildInput): Promise<ApiResponse<{ data: Child }>> {
+    return fetchApi<{ data: Child }>("/children", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async update(
+    id: string,
+    input: UpdateChildInput
+  ): Promise<ApiResponse<{ data: Child }>> {
+    return fetchApi<{ data: Child }>(`/children/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async delete(id: string): Promise<ApiResponse<{ message: string }>> {
+    return fetchApi<{ message: string }>(`/children/${id}`, {
+      method: "DELETE",
+    });
   },
 };
 
+// Families types
+export interface Family {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Families API
 export const familiesApi = {
-  async list(): Promise<ApiResponse<{ families: unknown[] }>> {
-    return fetchApi<{ families: unknown[] }>("/families");
+  async list(): Promise<ApiResponse<{ data: Family[] }>> {
+    return fetchApi<{ data: Family[] }>("/families");
+  },
+
+  async get(id: string): Promise<ApiResponse<{ data: Family }>> {
+    return fetchApi<{ data: Family }>(`/families/${id}`);
   },
 };
