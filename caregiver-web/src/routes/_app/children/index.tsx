@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import { childrenApi, familiesApi, type Child, type CreateChildInput } from "~/lib/api";
 import { ChildCard } from "~/components/children/ChildCard";
 import { AddChildModal } from "~/components/children/AddChildModal";
+import { Button } from "~/components/ui/button";
 
-export const Route = createFileRoute("/_app/children")({
+export const Route = createFileRoute("/_app/children/")({
   component: ChildrenPage,
 });
 
@@ -103,9 +104,9 @@ function ChildrenPage() {
             <p className="text-sm">{error}</p>
           </div>
         </div>
-        <button onClick={loadData} className="btn-primary mt-4">
+        <Button onClick={loadData} className="mt-4">
           Try Again
-        </button>
+        </Button>
       </div>
     );
   }
@@ -120,13 +121,12 @@ function ChildrenPage() {
             Manage profiles for the children you support.
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setIsModalOpen(true)}
-          className="btn-primary"
           disabled={!familyId}
         >
           Add Child
-        </button>
+        </Button>
       </div>
 
       {/* Content */}
@@ -155,13 +155,12 @@ function ChildrenPage() {
               Add a child's profile to start tracking their communication progress
               and customize their AAC experience.
             </p>
-            <button
+            <Button
               onClick={() => setIsModalOpen(true)}
-              className="btn-primary"
               disabled={!familyId}
             >
               Add Your First Child
-            </button>
+            </Button>
           </div>
         </div>
       ) : (

@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { childrenApi, type ChildWithProgress } from "~/lib/api";
+import { Button } from "~/components/ui/button";
+import { BarChart3, MessageSquare, History, Grid3x3 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/children/$childId")({
   component: ChildDetailPage,
@@ -64,9 +66,9 @@ function ChildDetailPage() {
             <p className="text-sm">{error || "Child not found"}</p>
           </div>
         </div>
-        <Link to="/children" className="btn-primary mt-4">
-          Back to Children
-        </Link>
+        <Button asChild className="mt-4">
+          <Link to="/children">Back to Children</Link>
+        </Button>
       </div>
     );
   }
@@ -193,19 +195,25 @@ function ChildDetailPage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link to="/dashboard" className="btn-primary text-center">
-            View Progress Dashboard
-          </Link>
-          <button className="btn-secondary" disabled>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Button asChild variant="default" className="justify-start">
+            <Link to="/dashboard" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              View Progress Dashboard
+            </Link>
+          </Button>
+          <Button variant="outline" disabled className="justify-start gap-2">
+            <MessageSquare className="h-4 w-4" />
             Start Chat Session
-          </button>
-          <button className="btn-secondary" disabled>
+          </Button>
+          <Button variant="outline" disabled className="justify-start gap-2">
+            <History className="h-4 w-4" />
             View Usage History
-          </button>
-          <button className="btn-secondary" disabled>
+          </Button>
+          <Button variant="outline" disabled className="justify-start gap-2">
+            <Grid3x3 className="h-4 w-4" />
             Customize Symbol Board
-          </button>
+          </Button>
         </div>
       </div>
     </div>
