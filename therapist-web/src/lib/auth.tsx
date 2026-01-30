@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (import.meta.env.DEV) {
       setTimeout(() => {
         setIsAuthenticated(true);
-        setTherapistId("dev-therapist-id"); // This would come from the backend /auth/me endpoint
+        setTherapistId("76813ec1-fb5f-4ad9-bca7-dd000b5e62ad"); // Dev therapist ID from seed data
         setIsLoading(false);
       }, 100);
     } else {
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = () => {
     setIsAuthenticated(true);
-    setTherapistId("dev-therapist-id");
+    setTherapistId("76813ec1-fb5f-4ad9-bca7-dd000b5e62ad");
   };
 
   const logout = () => {

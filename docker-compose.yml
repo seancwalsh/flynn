@@ -107,13 +107,35 @@ services:
       - flynn-aac-network
     restart: unless-stopped
 
+  # Therapist Web Portal
+  therapist-web:
+    build:
+      context: ./therapist-web
+      dockerfile: Dockerfile
+      target: development
+    container_name: flynn-aac-therapist-web
+    environment:
+      VITE_API_URL: http://localhost:3000/api/v1
+      VITE_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./therapist-web/src:/app/src:ro
+      - ./therapist-web/public:/app/public:ro
+      - therapist_node_modules:/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - flynn-aac-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   backend_node_modules:
   caregiver_node_modules:
+  therapist_node_modules:
 
 networks:
   flynn-aac-network:
-    name: flynn-aac-network
     driver: bridge
