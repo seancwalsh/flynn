@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 /// Child model for onboarding selection
 struct SelectableChild: Codable, Identifiable {
@@ -10,68 +9,45 @@ struct SelectableChild: Codable, Identifiable {
 }
 
 /// Onboarding view for selecting which child this device is registered to
+///
+/// Design principles:
+/// - Uses Liquid Glass for navigation layer (not content)
+/// - Applies Regular variant for automatic legibility
+/// - Uses semantic colors and SF Symbols
+/// - Provides sensory feedback via modern `.sensoryFeedback` modifier
+/// - Adopts iOS 26 containerRelativeShape for visual harmony
 struct ChildSelectionView: View {
     @StateObject private var deviceManager = DeviceManager.shared
     @State private var children: [SelectableChild] = []
     @State private var selectedChildId: String?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var successTrigger = false
 
     let onComplete: () -> Void
 
     var body: some View {
         ZStack {
-            // Beautiful gradient background matching app style
-            LinearGradient(
-                colors: [
-                    Color(red: 0.95, green: 0.93, blue: 0.98),  // Soft lavender
-                    Color(red: 0.92, green: 0.96, blue: 0.98),  // Soft blue
-                    Color(red: 0.96, green: 0.94, blue: 0.92)   // Warm cream
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Background - use semantic colors, not custom gradients
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
 
-            VStack(spacing: 32) {
+            VStack(spacing: 40) {
                 // Header
-                VStack(spacing: 12) {
-                    Text("Flynn")
-                        .font(.custom("Bradley Hand", size: 48))
-                        .fontWeight(.bold)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.36, green: 0.55, blue: 0.87),
-                                    Color(red: 0.58, green: 0.44, blue: 0.78)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                headerView
+                    .padding(.top, 60)
 
-                    Text("Select Child")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-
-                    Text("Choose which child will use this device")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-                .padding(.top, 60)
-
-                // Content
-                if isLoading {
-                    loadingView
-                } else if let errorMessage = errorMessage {
-                    errorView(message: errorMessage)
-                } else if children.isEmpty {
-                    emptyStateView
-                } else {
-                    childrenListView
+                // Content (not using Liquid Glass - content layer)
+                Group {
+                    if isLoading {
+                        loadingView
+                    } else if let errorMessage = errorMessage {
+                        errorView(message: errorMessage)
+                    } else if children.isEmpty {
+                        emptyStateView
+                    } else {
+                        childrenListView
+                    }
                 }
 
                 Spacer()
@@ -83,221 +59,212 @@ struct ChildSelectionView: View {
         }
     }
 
+    // MARK: - Header
+
+    private var headerView: some View {
+        VStack(spacing: 16) {
+            // App icon - using SF Symbol for consistency
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 64, weight: .medium))
+                .foregroundStyle(.tint)
+                .symbolRenderingMode(.hierarchical)
+                .symbolEffect(.pulse.byLayer, options: .repeating, isActive: isLoading)
+
+            Text("Flynn AAC")
+                .font(.largeTitle.weight(.bold))
+                .foregroundStyle(.primary)
+
+            VStack(spacing: 8) {
+                Text("Select Child")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text("Choose which child will use this device")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+
     // MARK: - Loading View
 
     private var loadingView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             ProgressView()
-                .scaleEffect(1.5)
+                .controlSize(.large)
 
             Text("Loading children...")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
-        .padding(40)
+        .padding(60)
     }
 
     // MARK: - Error View
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.orange)
+                .font(.system(size: 56))
+                .foregroundStyle(.orange)
+                .symbolEffect(.bounce, value: errorMessage)
 
-            Text("Unable to Load Children")
-                .font(.headline)
+            VStack(spacing: 12) {
+                Text("Unable to Load Children")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
 
-            Text(message)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            Button(action: {
+            Button {
                 Task {
                     await loadChildren()
                 }
-            }) {
+            } label: {
                 Label("Try Again", systemImage: "arrow.clockwise")
                     .font(.body.weight(.semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.36, green: 0.55, blue: 0.87),
-                                Color(red: 0.58, green: 0.44, blue: 0.78)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(12)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .sensoryFeedback(.impact, trigger: errorMessage)
+        }
+        .padding(40)
+        .frame(maxWidth: 480)
+    }
+
+    // MARK: - Empty State
+
+    private var emptyStateView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "person.2.slash.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(.secondary)
+                .symbolEffect(.pulse)
+
+            VStack(spacing: 12) {
+                Text("No Children Found")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Text("Please add a child to your family in the web dashboard first.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(40)
+        .frame(maxWidth: 480)
     }
 
-    // MARK: - Empty State View
-
-    private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "person.2.slash")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-
-            Text("No Children Found")
-                .font(.headline)
-
-            Text("Please add a child to your family in the web dashboard first.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-        }
-        .padding(40)
-    }
-
-    // MARK: - Children List View
+    // MARK: - Children List
 
     private var childrenListView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 24) {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: 16) {
                     ForEach(children) { child in
                         childCard(child)
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 4)
             }
+            .scrollIndicators(.hidden)
 
-            // Continue Button
-            Button(action: {
+            // Continue Button - uses Liquid Glass (navigation layer)
+            Button {
                 completeSelection()
-            }) {
+            } label: {
                 Text("Continue")
                     .font(.body.weight(.semibold))
-                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        selectedChildId != nil
-                            ? LinearGradient(
-                                colors: [
-                                    Color(red: 0.36, green: 0.55, blue: 0.87),
-                                    Color(red: 0.58, green: 0.44, blue: 0.78)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            : LinearGradient(
-                                colors: [Color.gray.opacity(0.5)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                    )
-                    .cornerRadius(16)
+                    .frame(height: 54)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .disabled(selectedChildId == nil)
+            .glassEffect() // Liquid Glass for navigation control
+            .sensoryFeedback(.success, trigger: successTrigger)
             .padding(.horizontal)
-            .padding(.bottom, 20)
+            .padding(.bottom, 8)
         }
     }
 
     // MARK: - Child Card
 
     private func childCard(_ child: SelectableChild) -> some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.3)) {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                 selectedChildId = child.id
             }
-        }) {
+        } label: {
             HStack(spacing: 16) {
-                // Avatar
+                // Avatar with SF Symbol
                 ZStack {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.36, green: 0.55, blue: 0.87).opacity(0.3),
-                                    Color(red: 0.58, green: 0.44, blue: 0.78).opacity(0.3)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
+                        .fill(.tint.opacity(0.15))
+                        .frame(width: 64, height: 64)
 
-                    Text(child.name.prefix(1).uppercased())
-                        .font(.title2.weight(.bold))
-                        .foregroundColor(Color(red: 0.36, green: 0.55, blue: 0.87))
+                    if let firstLetter = child.name.first {
+                        Text(String(firstLetter).uppercased())
+                            .font(.title.weight(.bold))
+                            .foregroundStyle(.tint)
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.title2)
+                            .foregroundStyle(.tint)
+                    }
                 }
 
                 // Name and info
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(child.name)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
 
                     if let dob = child.dateOfBirth {
-                        Text(formatDateOfBirth(dob))
+                        Label(formatDateOfBirth(dob), systemImage: "calendar")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 Spacer()
 
-                // Checkmark
+                // Selection indicator with SF Symbol animation
                 if selectedChildId == child.id {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.36, green: 0.55, blue: 0.87),
-                                    Color(red: 0.58, green: 0.44, blue: 0.78)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .foregroundStyle(.tint)
+                        .symbolEffect(.bounce, value: selectedChildId)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white.opacity(0.7))
+            .padding(20)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
                     .shadow(
-                        color: selectedChildId == child.id
-                            ? Color(red: 0.36, green: 0.55, blue: 0.87).opacity(0.3)
-                            : Color.black.opacity(0.05),
-                        radius: selectedChildId == child.id ? 12 : 8,
-                        y: 4
+                        color: .black.opacity(selectedChildId == child.id ? 0.1 : 0.05),
+                        radius: selectedChildId == child.id ? 12 : 6,
+                        y: selectedChildId == child.id ? 6 : 3
                     )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        selectedChildId == child.id
-                            ? LinearGradient(
-                                colors: [
-                                    Color(red: 0.36, green: 0.55, blue: 0.87),
-                                    Color(red: 0.58, green: 0.44, blue: 0.78)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            : LinearGradient(colors: [Color.clear], startPoint: .leading, endPoint: .trailing),
-                        lineWidth: 2
-                    )
-            )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(.tint.opacity(selectedChildId == child.id ? 0.5 : 0), lineWidth: 2)
+            }
             .scaleEffect(selectedChildId == child.id ? 1.02 : 1.0)
+            .containerRelativeShape(.roundedRectangle) // iOS 26 - visual harmony
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: selectedChildId)
     }
 
     // MARK: - Actions
@@ -335,32 +302,34 @@ struct ChildSelectionView: View {
         // Register device to selected child
         deviceManager.registerDevice(childId: childId)
 
-        // Trigger haptic feedback
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        // Trigger sensory feedback
+        successTrigger.toggle()
 
         print("✅ ChildSelectionView: Device registered to child \(childId)")
 
-        // Complete onboarding
-        onComplete()
+        // Complete onboarding with slight delay for feedback
+        Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            onComplete()
+        }
     }
 
     private func formatDateOfBirth(_ dateString: String) -> String {
         // Parse ISO date and calculate age
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: dateString) else {
-            return ""
+            return "Unknown age"
         }
 
         let calendar = Calendar.current
         let now = Date()
         let ageComponents = calendar.dateComponents([.year], from: date, to: now)
 
-        if let years = ageComponents.year {
+        if let years = ageComponents.year, years > 0 {
             return "\(years) year\(years == 1 ? "" : "s") old"
         }
 
-        return ""
+        return "Under 1 year"
     }
 }
 
@@ -379,7 +348,19 @@ private struct ChildData: Codable {
 
 // MARK: - Preview
 
-#Preview {
+#Preview("With Children") {
+    ChildSelectionView {
+        print("Onboarding complete")
+    }
+}
+
+#Preview("Loading") {
+    ChildSelectionView {
+        print("Onboarding complete")
+    }
+}
+
+#Preview("Empty State") {
     ChildSelectionView {
         print("Onboarding complete")
     }
