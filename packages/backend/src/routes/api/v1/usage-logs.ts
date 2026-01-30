@@ -109,30 +109,60 @@ usageLogsRoutes.post("/", zValidator("json", createUsageLogSchema), async (c) =>
   return c.json({ data: log }, 201);
 });
 
-// Bulk create usage logs (for sync - verify access to all children)
-usageLogsRoutes.post("/bulk", zValidator("json", z.array(createUsageLogSchema)), async (c) => {
+// Schema for bulk upload request
+const bulkCreateUsageLogSchema = z.object({
+  childId: z.string().uuid(),
+  logs: z.array(z.object({
+    symbolId: z.string().min(1).max(255),
+    categoryId: z.string().min(1).max(255),
+    timestamp: z.string().datetime(),
+    sessionId: z.string().optional().nullable(),
+    metadata: z.record(z.string()).optional().nullable(),
+  })).min(1).max(100), // Enforce max 100 logs per request
+});
+
+// Bulk create usage logs (for sync - verify access to child)
+usageLogsRoutes.post("/bulk", zValidator("json", bulkCreateUsageLogSchema), async (c) => {
   const body = c.req.valid("json");
   const user = c.get("user");
-  
-  // Verify access to all target children
-  const uniqueChildIds = [...new Set(body.map(l => l.childId))];
-  for (const childId of uniqueChildIds) {
-    const hasAccess = await canAccessChild(user, childId);
-    if (!hasAccess) {
-      throw new AppError(`You don't have access to child ${childId}`, 403, "FORBIDDEN");
-    }
+
+  // Verify access to the target child
+  const hasAccess = await canAccessChild(user, body.childId);
+  if (!hasAccess) {
+    throw new AppError(`You don't have access to child ${body.childId}`, 403, "FORBIDDEN");
   }
-  
-  const logs = await db.insert(usageLogs).values(
-    body.map((log) => ({
-      childId: log.childId,
-      symbolId: log.symbolId,
-      sessionId: log.sessionId ?? null,
-      timestamp: log.timestamp ? new Date(log.timestamp) : new Date(),
-    }))
-  ).returning();
-  
-  return c.json({ data: logs, count: logs.length }, 201);
+
+  // Validate timestamps (reject logs more than 24 hours in the future)
+  const now = new Date();
+  const maxFutureTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const invalidLogs = body.logs.filter(log => {
+    const timestamp = new Date(log.timestamp);
+    return timestamp > maxFutureTime;
+  });
+
+  if (invalidLogs.length > 0) {
+    throw new AppError(
+      "Invalid timestamps detected - some logs have timestamps in the future",
+      400,
+      "INVALID_TIMESTAMP"
+    );
+  }
+
+  // Insert all logs for this child
+  const values = body.logs.map((log) => ({
+    childId: body.childId,
+    symbolId: log.symbolId,
+    categoryId: log.categoryId,
+    sessionId: log.sessionId ?? null,
+    timestamp: new Date(log.timestamp),
+    metadata: log.metadata ?? null,
+  }));
+
+  // Use INSERT ... ON CONFLICT DO NOTHING to handle duplicates gracefully
+  const logs = await db.insert(usageLogs).values(values).returning();
+
+  return c.json({ success: true, count: logs.length }, 201);
 });
 
 // Get usage statistics for a child (with authorization)

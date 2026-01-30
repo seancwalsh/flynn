@@ -82,8 +82,10 @@ export const usageLogs = pgTable("usage_logs", {
     .references(() => children.id, { onDelete: "cascade" })
     .notNull(),
   symbolId: varchar("symbol_id", { length: 255 }).notNull(), // Reference to symbol in CloudKit
+  categoryId: varchar("category_id", { length: 255 }), // Category of the symbol (food, actions, etc.)
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   sessionId: uuid("session_id"), // Groups logs from a single AAC session
+  metadata: jsonb("metadata"), // Additional metadata (flexible JSON)
 });
 
 // AI-generated insights (daily digests, weekly reports, alerts)

@@ -34,27 +34,49 @@ enum SyncStatus {
 @MainActor
 class SyncService: ObservableObject, SyncServiceProtocol {
     static let shared = SyncService()
-    
+
     /// Current sync status
     @Published private(set) var status: SyncStatus = .idle
-    
+
     /// Last successful sync date
     @Published private(set) var lastSyncDate: Date?
-    
+
     /// Whether sync is in progress
     @Published private(set) var isSyncing: Bool = false
-    
+
     private let apiClient = APIClient.shared
     private let authService = AuthService.shared
-    
+    private var syncTimer: Timer?
+
     // Storage keys
     private let lastSyncKey = "SyncService.lastSyncDate"
-    
+
     private init() {
         // Load last sync date from UserDefaults
         if let timestamp = UserDefaults.standard.object(forKey: lastSyncKey) as? Date {
             lastSyncDate = timestamp
         }
+
+        // Start periodic sync (every 5 minutes)
+        startPeriodicSync()
+    }
+
+    // MARK: - Periodic Sync
+
+    /// Start periodic background sync timer
+    private func startPeriodicSync() {
+        // Sync every 5 minutes
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                try? await self?.syncUsageData()
+            }
+        }
+    }
+
+    /// Stop periodic sync timer
+    func stopPeriodicSync() {
+        syncTimer?.invalidate()
+        syncTimer = nil
     }
     
     // MARK: - SyncServiceProtocol
@@ -102,13 +124,66 @@ class SyncService: ObservableObject, SyncServiceProtocol {
         guard authService.isAuthenticated else {
             throw SyncError.notAuthenticated
         }
-        
-        // TODO: Implement usage data sync
-        // 1. Get pending usage logs from local storage
-        // 2. POST to /api/v1/usage-logs
-        // 3. Mark as synced locally
-        
-        print("SyncService: Usage data sync (stub)")
+
+        let usageLogManager = UsageLogManager.shared
+        let pendingLogs = await usageLogManager.getPendingLogs(limit: 100)
+
+        guard !pendingLogs.isEmpty else {
+            print("SyncService: No pending usage logs to sync")
+            return
+        }
+
+        // Group logs by childId (API expects one childId per request)
+        let logsByChild = Dictionary(grouping: pendingLogs, by: { $0.childId })
+
+        for (childId, logs) in logsByChild {
+            do {
+                // Convert to API format
+                let apiLogs = logs.map { log in
+                    UsageLogEntryRequest(
+                        symbolId: log.symbolId,
+                        categoryId: log.categoryId,
+                        timestamp: ISO8601DateFormatter().string(from: log.timestamp),
+                        sessionId: log.sessionId,
+                        metadata: log.metadata
+                    )
+                }
+
+                let requestBody = UsageLogBulkRequest(
+                    childId: childId,
+                    logs: apiLogs
+                )
+
+                // POST to backend
+                let response: UsageLogBulkResponse = try await apiClient.post(
+                    path: "/usage-logs/bulk",
+                    body: requestBody
+                )
+
+                // Verify success
+                guard response.success else {
+                    throw SyncError.unknown(NSError(
+                        domain: "SyncService",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Server returned success=false"]
+                    ))
+                }
+
+                // Mark as synced on success
+                let logIds = logs.map { $0.id }
+                await usageLogManager.markLogsSynced(ids: logIds)
+
+                print("✅ SyncService: Synced \(response.count) usage logs for child \(childId)")
+            } catch {
+                print("❌ SyncService: Failed to sync logs for child \(childId): \(error)")
+
+                // Mark as failed for retry
+                let logIds = logs.map { $0.id }
+                await usageLogManager.markLogsFailed(ids: logIds)
+
+                throw error
+            }
+        }
     }
     
     /// Sync user preferences to backend
@@ -199,7 +274,7 @@ struct UsageLogEntry: Codable, Identifiable {
     let timestamp: Date
     let sessionId: UUID?
     var isSynced: Bool
-    
+
     init(symbolId: String, sessionId: UUID? = nil) {
         self.id = UUID()
         self.symbolId = symbolId
@@ -207,4 +282,27 @@ struct UsageLogEntry: Codable, Identifiable {
         self.sessionId = sessionId
         self.isSynced = false
     }
+}
+
+// MARK: - Bulk Upload Models
+
+/// Request body for bulk usage log upload
+struct UsageLogBulkRequest: Encodable {
+    let childId: String
+    let logs: [UsageLogEntryRequest]
+}
+
+/// Single usage log entry in bulk upload request
+struct UsageLogEntryRequest: Encodable {
+    let symbolId: String
+    let categoryId: String
+    let timestamp: String
+    let sessionId: String?
+    let metadata: [String: String]?
+}
+
+/// Response from bulk usage log upload
+struct UsageLogBulkResponse: Decodable {
+    let success: Bool
+    let count: Int
 }
