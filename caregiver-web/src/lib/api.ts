@@ -91,6 +91,28 @@ export interface UpdateChildInput {
   birthDate?: string;
 }
 
+// Child Stats types
+export interface ChildStats {
+  totalSymbols: number;
+  recentActivity: string | null;
+  insightCount: number;
+  goalCount: number;
+}
+
+// Insight types
+export interface Insight {
+  id: string;
+  childId: string;
+  type: string;
+  severity: string | null;
+  title: string | null;
+  body: string | null;
+  content: Record<string, any>;
+  generatedAt: string;
+  readAt: string | null;
+  dismissedAt: string | null;
+}
+
 export const childrenApi = {
   async list(): Promise<ApiResponse<{ data: Child[] }>> {
     return fetchApi<{ data: Child[] }>("/children");
@@ -98,6 +120,15 @@ export const childrenApi = {
 
   async get(id: string): Promise<ApiResponse<{ data: ChildWithProgress }>> {
     return fetchApi<{ data: ChildWithProgress }>(`/children/${id}`);
+  },
+
+  async getStats(id: string): Promise<ApiResponse<{ data: ChildStats }>> {
+    return fetchApi<{ data: ChildStats }>(`/children/${id}/stats`);
+  },
+
+  async getInsights(id: string, type?: string): Promise<ApiResponse<{ data: Insight[] }>> {
+    const query = type ? `?type=${type}` : '';
+    return fetchApi<{ data: Insight[] }>(`/children/${id}/insights${query}`);
   },
 
   async create(input: CreateChildInput): Promise<ApiResponse<{ data: Child }>> {
@@ -242,5 +273,74 @@ export const insightsApi = {
     childId: string
   ): Promise<ApiResponse<{ count: number }>> {
     return fetchApi<{ count: number }>(`/insights/unread-count/${childId}`);
+  },
+};
+
+// Goals types
+export type TherapyType = "aac" | "aba" | "ot" | "slp" | "pt" | "other";
+export type GoalStatus = "active" | "achieved" | "paused" | "discontinued";
+
+export interface Goal {
+  id: string;
+  childId: string;
+  title: string;
+  description?: string | null;
+  therapyType: TherapyType;
+  category?: string | null;
+  status: GoalStatus;
+  targetDate?: string | null;
+  progressPercent: number;
+  createdBy?: string | null;
+  therapistId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateGoalInput {
+  title: string;
+  description?: string;
+  therapyType: TherapyType;
+  category?: string;
+  targetDate?: string;
+  progressPercent?: number;
+}
+
+export interface UpdateGoalInput {
+  title?: string;
+  description?: string;
+  status?: GoalStatus;
+  progressPercent?: number;
+  targetDate?: string;
+}
+
+// Goals API
+export const goalsApi = {
+  async listForChild(childId: string, status?: GoalStatus): Promise<ApiResponse<{ data: Goal[] }>> {
+    const query = status ? `?status=${status}` : "";
+    return fetchApi<{ data: Goal[] }>(`/children/${childId}/goals${query}`);
+  },
+
+  async get(id: string): Promise<ApiResponse<{ data: Goal }>> {
+    return fetchApi<{ data: Goal }>(`/goals/${id}`);
+  },
+
+  async create(childId: string, input: CreateGoalInput): Promise<ApiResponse<{ data: Goal }>> {
+    return fetchApi<{ data: Goal }>(`/children/${childId}/goals`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async update(id: string, input: UpdateGoalInput): Promise<ApiResponse<{ data: Goal }>> {
+    return fetchApi<{ data: Goal }>(`/goals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async delete(id: string): Promise<ApiResponse<void>> {
+    return fetchApi<void>(`/goals/${id}`, {
+      method: "DELETE",
+    });
   },
 };

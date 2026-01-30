@@ -21,6 +21,8 @@
     "db:migrate": "bun run src/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "seed": "bun run src/scripts/seed-database.ts",
+    "seed:clean": "bun run src/scripts/seed-database.ts --clean",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
