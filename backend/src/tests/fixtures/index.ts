@@ -6,7 +6,7 @@
  */
 
 import { getTestDb } from "../setup";
-import { families, children, caregivers, therapists, usageLogs, insights, goals, therapySessions, notes } from "../../db/schema";
+import { users, families, children, caregivers, therapists, therapistClients, usageLogs, insights, goals, therapySessions, notes } from "../../db/schema";
 
 /**
  * Create a test family and return its data
@@ -54,18 +54,41 @@ export async function createTestCaregiver(
 }
 
 /**
- * Create a test therapist
+ * Create a test therapist and corresponding user account
  */
 export async function createTestTherapist(
   overrides: { name?: string; email?: string } = {}
 ) {
   const db = getTestDb();
   const uniqueEmail = `therapist-${Date.now()}-${Math.random().toString(36).slice(2)}@test.com`;
+  const email = overrides.email ?? uniqueEmail;
+
+  // Create therapist record
   const [therapist] = await db.insert(therapists).values({
     name: overrides.name ?? "Dr. Test Therapist",
-    email: overrides.email ?? uniqueEmail,
+    email,
   }).returning();
+
+  // Create user account for therapist (for authentication)
+  await db.insert(users).values({
+    clerkId: `test-therapist-${therapist.id}`,
+    email,
+    role: "therapist",
+  });
+
   return therapist;
+}
+
+/**
+ * Assign a therapist to a child (creates therapist-client relationship)
+ */
+export async function assignTherapistToChild(therapistId: string, childId: string) {
+  const db = getTestDb();
+  const [assignment] = await db.insert(therapistClients).values({
+    therapistId,
+    childId,
+  }).returning();
+  return assignment;
 }
 
 /**

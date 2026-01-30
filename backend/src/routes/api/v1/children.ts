@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod/v4";
 import { db } from "../../../db";
-import { children, dailyMetrics, insights, goals } from "../../../db/schema";
+import { children, dailyMetrics, insights, goals, therapySessions } from "../../../db/schema";
 import { eq, inArray, desc } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
 import {
@@ -43,6 +43,18 @@ const updateGoalSchema = z.object({
   status: statusEnum.optional(),
   progressPercent: z.number().int().min(0).max(100).optional(),
   targetDate: z.string().date().optional(),
+});
+
+const createSessionSchema = z.object({
+  therapyType: therapyTypeEnum,
+  sessionDate: z.string().date(),
+  durationMinutes: z.number().int().positive().optional(),
+  notes: z.string().optional(),
+  goalsWorkedOn: z.array(z.object({
+    goalId: z.string().uuid(),
+    progress: z.number().int().min(0).max(100).optional(),
+    notes: z.string().optional(),
+  })).optional(),
 });
 
 // List children (filtered by authorization)
@@ -268,4 +280,48 @@ childrenRoutes.post("/:id/goals", requireChildAccess(), zValidator("json", creat
   }).returning();
 
   return c.json({ data: goal }, 201);
+});
+
+// List sessions for child (with authorization)
+childrenRoutes.get("/:id/sessions", requireChildAccess(), async (c) => {
+  const id = c.req.param("id");
+
+  // Verify child exists
+  const [child] = await db.select().from(children).where(eq(children.id, id));
+  if (!child) {
+    throw new AppError("Child not found", 404, "NOT_FOUND");
+  }
+
+  const childSessions = await db
+    .select()
+    .from(therapySessions)
+    .where(eq(therapySessions.childId, id))
+    .orderBy(desc(therapySessions.sessionDate));
+
+  return c.json({ data: childSessions });
+});
+
+// Create therapy session for child (with authorization)
+childrenRoutes.post("/:id/sessions", requireChildAccess(), zValidator("json", createSessionSchema), async (c) => {
+  const id = c.req.param("id");
+  const body = c.req.valid("json");
+  const user = c.get("user");
+
+  // Verify child exists
+  const [child] = await db.select().from(children).where(eq(children.id, id));
+  if (!child) {
+    throw new AppError("Child not found", 404, "NOT_FOUND");
+  }
+
+  const [session] = await db.insert(therapySessions).values({
+    childId: id,
+    therapyType: body.therapyType,
+    sessionDate: body.sessionDate,
+    durationMinutes: body.durationMinutes ?? null,
+    notes: body.notes ?? null,
+    goalsWorkedOn: body.goalsWorkedOn ? JSON.stringify(body.goalsWorkedOn) : null,
+    therapistId: null, // TODO: Link to therapist if user is a therapist
+  }).returning();
+
+  return c.json({ data: session }, 201);
 });

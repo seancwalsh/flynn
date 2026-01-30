@@ -10,6 +10,7 @@ import { conversationsRoutes } from "./conversations";
 import { notificationsRoutes } from "./notifications";
 import { authRoutes } from "./auth";
 import { goalsRoutes } from "./goals";
+import { sessionsRoutes } from "./sessions";
 
 export const apiV1Routes = new Hono();
 
@@ -37,5 +38,6 @@ apiV1Routes.route("/therapists", therapistsRoutes);
 apiV1Routes.route("/usage-logs", usageLogsRoutes);
 apiV1Routes.route("/insights", insightsRoutes);
 apiV1Routes.route("/goals", goalsRoutes);
+apiV1Routes.route("/sessions", sessionsRoutes);
 apiV1Routes.route("/conversations", conversationsRoutes);
 apiV1Routes.route("/notifications", notificationsRoutes);
