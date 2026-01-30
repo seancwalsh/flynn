@@ -21,7 +21,7 @@ struct ARASAACImageView: View {
                 Image(systemName: SymbolCell.sfSymbolMapping[symbolId] ?? "questionmark.circle")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .foregroundStyle(loadFailed ? FlynnTheme.Colors.textTertiary : FlynnTheme.Colors.textSecondary)
+                    .foregroundStyle(loadFailed ? FlynnTheme.Colors.textMuted : FlynnTheme.Colors.textSecondary)
             }
         }
         .task {
@@ -61,9 +61,11 @@ struct ARASAACImageView: View {
     private func reportLoadError() {
         // Report to error notification service
         // Use a slight delay to avoid showing errors for every cell during initial load
-        Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
-            ErrorNotificationService.shared.reportImageLoadFailed(symbolId: symbolId)
-        }
+        // TODO: Re-enable when ErrorNotificationService is properly included in target
+        // Task {
+        //     try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
+        //     ErrorNotificationService.shared.reportImageLoadFailed(symbolId: symbolId)
+        // }
+        print("⚠️ Image load failed for symbol: \(symbolId)")
     }
 }

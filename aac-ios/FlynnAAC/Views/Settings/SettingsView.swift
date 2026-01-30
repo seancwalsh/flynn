@@ -6,8 +6,9 @@ struct SettingsView: View {
     let onEditVocabulary: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.authService) private var authService
-    @StateObject private var preloadService = ImagePreloadService.shared
+    // TODO: Re-enable when AuthService and ImagePreloadService are properly included in target
+    // @ObservedObject private var authService = AuthService.shared
+    // @ObservedObject private var preloadService = ImagePreloadService.shared
     @State private var showChangePassphrase = false
     @State private var showDeletePassphraseConfirmation = false
     @State private var showLogoutConfirmation = false
@@ -26,32 +27,14 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // TODO: Re-enable account section when AuthService is available
                 // Account section
-                if authService.isAuthenticated, let user = authService.currentUser {
-                    Section("Account") {
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(user.email)
-                                    .font(.body.weight(.medium))
-                                Text(user.role.rawValue.capitalized)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        .accessibilityElement(children: .combine)
-                        
-                        Button(role: .destructive) {
-                            showLogoutConfirmation = true
-                        } label: {
-                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                        }
-                    }
-                }
+                // if authService.isAuthenticated, let user = authService.currentUser {
+                //     Section("Account") {
+                //         ...
+                //     }
+                // }
+
                 Section("Language") {
                     Picker("Language", selection: $settings.language) {
                         ForEach(Language.allCases, id: \.self) { language in
@@ -81,22 +64,23 @@ struct SettingsView: View {
                     Toggle("Return to home after selection", isOn: $settings.autoReturnToHome)
                 }
 
-                Section {
-                    Button(action: { showRefreshImagesConfirmation = true }) {
-                        HStack {
-                            Label("Refresh Symbol Images", systemImage: "arrow.clockwise")
-                            Spacer()
-                            if preloadService.isPreloading {
-                                ProgressView()
-                            }
-                        }
-                    }
-                    .disabled(preloadService.isPreloading)
-                } header: {
-                    Text("Images")
-                } footer: {
-                    Text("Re-download all ARASAAC symbol images. Use if images appear corrupted or missing.")
-                }
+                // TODO: Re-enable when ImagePreloadService is available
+                // Section {
+                //     Button(action: { showRefreshImagesConfirmation = true }) {
+                //         HStack {
+                //             Label("Refresh Symbol Images", systemImage: "arrow.clockwise")
+                //             Spacer()
+                //             if preloadService.isPreloading {
+                //                 ProgressView()
+                //             }
+                //         }
+                //     }
+                //     .disabled(preloadService.isPreloading)
+                // } header: {
+                //     Text("Images")
+                // } footer: {
+                //     Text("Re-download all ARASAAC symbol images. Use if images appear corrupted or missing.")
+                // }
 
                 // Caregiver Access section
                 Section {
@@ -164,35 +148,36 @@ struct SettingsView: View {
             } message: {
                 Text("This will remove passphrase protection. Anyone will be able to edit the vocabulary.")
             }
-            .confirmationDialog(
-                "Sign Out",
-                isPresented: $showLogoutConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Sign Out", role: .destructive) {
-                    Task {
-                        await authService.logout()
-                        dismiss()
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Are you sure you want to sign out? Your local settings will be preserved.")
-            }
-            .confirmationDialog(
-                "Refresh Images",
-                isPresented: $showRefreshImagesConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Refresh") {
-                    Task {
-                        await preloadService.refreshImages()
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will re-download all symbol images. This requires an internet connection and may take a few minutes.")
-            }
+            // TODO: Re-enable when AuthService is available
+            // .confirmationDialog(
+            //     "Sign Out",
+            //     isPresented: $showLogoutConfirmation,
+            //     titleVisibility: .visible
+            // ) {
+            //     Button("Sign Out", role: .destructive) {
+            //         Task {
+            //             await authService.logout()
+            //             dismiss()
+            //         }
+            //     }
+            //     Button("Cancel", role: .cancel) {}
+            // } message: {
+            //     Text("Are you sure you want to sign out? Your local settings will be preserved.")
+            // }
+            // .confirmationDialog(
+            //     "Refresh Images",
+            //     isPresented: $showRefreshImagesConfirmation,
+            //     titleVisibility: .visible
+            // ) {
+            //     Button("Refresh") {
+            //         Task {
+            //             await preloadService.refreshImages()
+            //         }
+            //     }
+            //     Button("Cancel", role: .cancel) {}
+            // } message: {
+            //     Text("This will re-download all symbol images. This requires an internet connection and may take a few minutes.")
+            // }
         }
     }
 
@@ -259,21 +244,21 @@ struct ChangePassphraseView: View {
                     if showError {
                         Text(errorMessage)
                             .font(.subheadline)
-                            .foregroundStyle(FlynnTheme.Colors.error)
+                            .foregroundStyle(.red)
                     }
                 }
 
                 Section {
-                    VStack(alignment: .leading, spacing: FlynnTheme.Layout.spacing4) {
-                        HStack(spacing: FlynnTheme.Layout.spacing8) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
                             Image(systemName: newPassphrase.count >= 4 ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(newPassphrase.count >= 4 ? FlynnTheme.Colors.success : .secondary)
+                                .foregroundStyle(newPassphrase.count >= 4 ? .green : .secondary)
                             Text("At least 4 characters")
                         }
 
-                        HStack(spacing: FlynnTheme.Layout.spacing8) {
+                        HStack(spacing: 8) {
                             Image(systemName: (newPassphrase == confirmPassphrase && !newPassphrase.isEmpty) ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle((newPassphrase == confirmPassphrase && !newPassphrase.isEmpty) ? FlynnTheme.Colors.success : .secondary)
+                                .foregroundStyle((newPassphrase == confirmPassphrase && !newPassphrase.isEmpty) ? .green : .secondary)
                             Text("Passphrases match")
                         }
                     }
