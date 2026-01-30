@@ -16,6 +16,9 @@ import { authApi, type AuthUser } from "./api";
 // Check if Clerk is configured
 const hasClerkKey = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 
+// Dev mode bypass - set VITE_DEV_AUTH_BYPASS=true to skip Clerk auth
+const devAuthBypass = import.meta.env.VITE_DEV_AUTH_BYPASS === "true";
+
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
@@ -99,15 +102,26 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Mock provider for when Clerk is not configured
+// Mock provider for when Clerk is not configured OR dev bypass is enabled
 function MockAuthProvider({ children }: { children: ReactNode }) {
   const noOp = async () => {
     // No-op when Clerk is not configured
   };
+
+  // In dev bypass mode, provide a mock authenticated user
+  const mockUser: AuthUser | null = devAuthBypass
+    ? {
+        id: "dev-user-123",
+        email: "dev@flynn-aac.local",
+        role: "caregiver",
+        createdAt: new Date().toISOString(),
+      }
+    : null;
+
   const value: AuthContextValue = {
-    user: null,
+    user: mockUser,
     isLoading: false,
-    isAuthenticated: false,
+    isAuthenticated: devAuthBypass, // Authenticated if bypass is enabled
     signOut: noOp,
     logout: noOp,
   };
@@ -120,7 +134,8 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  if (!hasClerkKey) {
+  // Use mock provider if Clerk is not configured OR dev bypass is enabled
+  if (!hasClerkKey || devAuthBypass) {
     return <MockAuthProvider>{children}</MockAuthProvider>;
   }
   return <ClerkAuthProvider>{children}</ClerkAuthProvider>;

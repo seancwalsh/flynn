@@ -25,6 +25,12 @@ async function fetchApi<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
+  // Dev mode bypass - add special header when in dev mode
+  const devAuthBypass = import.meta.env.VITE_DEV_AUTH_BYPASS === "true";
+  if (devAuthBypass) {
+    (headers as Record<string, string>)["x-dev-auth-bypass"] = "dev-user";
+  }
+
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,

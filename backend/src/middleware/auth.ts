@@ -98,6 +98,37 @@ async function getUserEmailFromClerk(userId: string): Promise<string | null> {
  */
 export function requireAuth(): MiddlewareHandler {
   return async (c: Context, next: Next) => {
+    // Dev mode bypass - check for special dev auth header
+    const devAuthBypass = process.env.DEV_AUTH_BYPASS === "true";
+    const devAuthHeader = c.req.header("x-dev-auth-bypass");
+
+    if (devAuthBypass && devAuthHeader === "dev-user") {
+      // Bypass Clerk auth and use dev user
+      let user = await findUserByEmail("dev@flynn-aac.local");
+
+      // Create dev user if it doesn't exist
+      if (!user) {
+        console.log("Creating dev user for auth bypass...");
+        const { createUserFromClerk } = await import("../services/auth");
+        user = await createUserFromClerk(
+          "dev-user-123",
+          "dev@flynn-aac.local",
+          "caregiver"
+        );
+      }
+
+      c.set("user", {
+        id: user.id,
+        clerkId: "dev-user-123",
+        email: "dev@flynn-aac.local",
+        role: user.role,
+      });
+      c.set("clerkUserId", "dev-user-123");
+
+      await next();
+      return;
+    }
+
     // Get token from Authorization header
     const authHeader = c.req.header("authorization");
 
@@ -118,20 +149,20 @@ export function requireAuth(): MiddlewareHandler {
     if (!payload) {
       throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");
     }
-    
+
     // Find or create user in our database
     let user = await findUserByClerkId(payload.userId);
-    
+
     if (!user) {
       // User might exist by email (migration scenario)
       user = await findUserByEmail(payload.email);
     }
-    
+
     if (!user) {
       // User doesn't exist in our DB yet - they need to go through the webhook
       throw new AppError("User not found. Please complete signup.", 401, "USER_NOT_FOUND");
     }
-    
+
     // Set user in context
     c.set("user", {
       id: user.id,
@@ -140,7 +171,7 @@ export function requireAuth(): MiddlewareHandler {
       role: user.role,
     });
     c.set("clerkUserId", payload.userId);
-    
+
     await next();
   };
 }
