@@ -4,31 +4,50 @@ import ClerkSDK
 /// Container view that shows either auth screens or main content
 struct AuthContainerView<Content: View>: View {
     @StateObject private var authService = AuthService.shared
+    @StateObject private var deviceManager = DeviceManager.shared
     @State private var isCheckingAuth = true
+    @State private var needsOnboarding = false
     let content: () -> Content
-    
+
     init(@ViewBuilder content: @escaping () -> Content) {
         self.content = content
     }
-    
+
     var body: some View {
         Group {
             if isCheckingAuth {
                 // Loading state while checking auth
                 splashView
-            } else if authService.isAuthenticated {
+            } else if !authService.isAuthenticated {
+                // Show login screen
+                LoginView(authService: authService)
+            } else if needsOnboarding {
+                // Show child selection onboarding
+                ChildSelectionView {
+                    // After selecting child, check again
+                    checkOnboardingStatus()
+                }
+            } else {
                 // Show main content
                 content()
                     .environment(\.authService, authService)
-            } else {
-                // Show login screen
-                LoginView(authService: authService)
             }
         }
         .task {
             // Try to restore session on app launch
             await restoreSession()
         }
+        .onChange(of: authService.isAuthenticated) { _, isAuthenticated in
+            // When auth state changes, re-check onboarding
+            if isAuthenticated {
+                checkOnboardingStatus()
+            }
+        }
+    }
+
+    /// Check if device needs onboarding (child selection)
+    private func checkOnboardingStatus() {
+        needsOnboarding = !deviceManager.isDeviceRegistered
     }
     
     private var splashView: some View {
@@ -68,10 +87,13 @@ struct AuthContainerView<Content: View>: View {
     private func restoreSession() async {
         // Small delay to show splash
         try? await Task.sleep(nanoseconds: 500_000_000)
-        
+
         // Check Clerk session
         await authService.checkClerkSession()
-        
+
+        // Check if device needs onboarding
+        checkOnboardingStatus()
+
         withAnimation {
             isCheckingAuth = false
         }
