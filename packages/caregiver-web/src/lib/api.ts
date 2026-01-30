@@ -2,7 +2,20 @@
  * API Client for Flynn Backend (Clerk Auth)
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
+import type {
+  Child as SharedChild,
+  Goal as SharedGoal,
+  Insight as SharedInsight,
+  Family as SharedFamily,
+  TherapyType as SharedTherapyType,
+  GoalStatus as SharedGoalStatus,
+  InsightType as SharedInsightType,
+  InsightSeverity as SharedInsightSeverity,
+  ApiResponse as SharedApiResponse,
+} from "@flynn-aac/shared-types";
+import { API_BASE_URL } from "@flynn-aac/shared-utils";
+
+const API_BASE = API_BASE_URL;
 
 interface ApiResponse<T> {
   data?: T;

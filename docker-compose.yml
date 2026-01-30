@@ -55,7 +55,7 @@ services:
   # Backend API
   backend:
     build:
-      context: ./backend
+      context: ./packages/backend
       dockerfile: Dockerfile
     container_name: flynn-aac-backend
     environment:
@@ -72,8 +72,8 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./backend/src:/app/src:ro
-      - ./backend/drizzle:/app/drizzle:ro
+      - ./packages/backend/src:/app/src:ro
+      - ./packages/backend/drizzle:/app/drizzle:ro
       - backend_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -87,7 +87,7 @@ services:
   # Caregiver Web Portal
   caregiver-web:
     build:
-      context: ./caregiver-web
+      context: ./packages/caregiver-web
       dockerfile: Dockerfile
       target: development
     container_name: flynn-aac-caregiver-web
@@ -97,9 +97,9 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./caregiver-web/src:/app/src:ro
-      - ./caregiver-web/app:/app/app:ro
-      - ./caregiver-web/public:/app/public:ro
+      - ./packages/caregiver-web/src:/app/src:ro
+      - ./packages/caregiver-web/app:/app/app:ro
+      - ./packages/caregiver-web/public:/app/public:ro
       - caregiver_node_modules:/app/node_modules
     depends_on:
       - backend
@@ -110,7 +110,7 @@ services:
   # Therapist Web Portal
   therapist-web:
     build:
-      context: ./therapist-web
+      context: ./packages/therapist-web
       dockerfile: Dockerfile
       target: development
     container_name: flynn-aac-therapist-web
@@ -120,8 +120,8 @@ services:
     ports:
       - "3002:3002"
     volumes:
-      - ./therapist-web/src:/app/src:ro
-      - ./therapist-web/public:/app/public:ro
+      - ./packages/therapist-web/src:/app/src:ro
+      - ./packages/therapist-web/public:/app/public:ro
       - therapist_node_modules:/app/node_modules
     depends_on:
       - backend

@@ -20,6 +20,10 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.59.6",
+    "@flynn-aac/shared-types": "workspace:*",
+    "@flynn-aac/shared-schemas": "workspace:*",
+    "@flynn-aac/shared-utils": "workspace:*",
+    "@flynn-aac/shared-ui": "workspace:*",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-scroll-area": "^1.2.10",

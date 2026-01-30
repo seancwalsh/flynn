@@ -2,64 +2,16 @@
  * API Client for Flynn AAC Therapist Dashboard
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
-
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-// Types
-export type TherapyType = "aac" | "aba" | "ot" | "slp" | "pt" | "other";
-export type GoalStatus = "active" | "achieved" | "paused" | "discontinued";
-
-export interface Child {
-  id: string;
-  familyId: string;
-  name: string;
-  birthDate?: string | null;
-  createdAt: string;
-}
-
-export interface Goal {
-  id: string;
-  childId: string;
-  title: string;
-  description?: string | null;
-  therapyType: TherapyType;
-  category?: string | null;
-  status: GoalStatus;
-  targetDate?: string | null;
-  progressPercent: number;
-  createdBy?: string | null;
-  therapistId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TherapySession {
-  id: string;
-  childId: string;
-  therapistId?: string | null;
-  therapyType: TherapyType;
-  sessionDate: string;
-  durationMinutes?: number | null;
-  notes?: string | null;
-  goalsWorkedOn?: Array<{
-    goalId: string;
-    progress?: number;
-    notes?: string;
-  }> | null;
-  createdAt: string;
-}
-
-export interface TherapistClient {
-  childId: string;
-  therapistId: string;
-  grantedAt: string;
-  child: Child;
-}
+import type {
+  Child,
+  Goal,
+  TherapySession,
+  TherapistClient,
+  ApiResponse,
+  TherapyType,
+  GoalStatus,
+} from "@flynn-aac/shared-types";
+import { API_BASE_URL } from "@flynn-aac/shared-utils";
 
 // Helper for making authenticated requests
 async function fetchApi<T>(
@@ -175,3 +127,6 @@ export const sessionsApi = {
     });
   },
 };
+
+// Re-export types for backward compatibility
+export type { Child, Goal, TherapySession, TherapistClient, ApiResponse, TherapyType, GoalStatus };
