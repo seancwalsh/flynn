@@ -10,7 +10,7 @@
 
 import * as React from "react";
 import { ChevronDown, ChevronRight, Loader2, Search, Database, FileText, Wrench } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@flynn-aac/shared-ui";
 import { cn, formatMessageTime } from "~/lib/utils";
 import type { Message, ToolCall, ToolResult } from "./types";
 

@@ -16,7 +16,7 @@
 import * as React from "react";
 import { useEffect, useCallback } from "react";
 import { X, Menu, AlertCircle } from "lucide-react";
-import { Button } from "~/components/ui/button";
+import { Button } from "@flynn-aac/shared-ui";
 import { cn } from "~/lib/utils";
 import { ConversationList } from "./ConversationList";
 import { MessageList } from "./MessageList";

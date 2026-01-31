@@ -13,10 +13,13 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test e2e/build-smoke.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:full": "./scripts/test-with-build.sh",
+    "test:ci": "bun run build && bun test:run && bun test:e2e:smoke && bun test:e2e"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.59.6",

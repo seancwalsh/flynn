@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { childrenApi, goalsApi, type ChildWithProgress, type ChildStats, type Goal, type CreateGoalInput, type UpdateGoalInput, type TherapyType, type GoalStatus } from "~/lib/api";
-import { Button } from "~/components/ui/button";
+import { Button } from "@flynn-aac/shared-ui";
 import { BarChart3, MessageSquare, History, Grid3x3, Target, Plus, Edit2, Trash2, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/children/$childId")({

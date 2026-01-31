@@ -1,0 +1,289 @@
+/**
+ * Liquid Glass Design System
+ *
+ * Following Apple's iOS 26 design language with proper layer separation:
+ * - Navigation layer: Gets glass effect
+ * - Content layer: Stays solid (no glass-on-glass)
+ *
+ * Usage:
+ * - Apply .liquid-glass-navigation to modals, navigation bars, floating controls
+ * - Apply .liquid-glass-content to content areas (solid background)
+ * - Never nest glass effects
+ */
+
+/* ============================================================================
+   LIQUID GLASS NAVIGATION LAYER
+   ============================================================================ */
+
+.liquid-glass-navigation {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-glass-navigation {
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Variants for different depths */
+.liquid-glass-navigation-light {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-glass-navigation-light {
+    background: rgba(40, 40, 40, 0.5);
+  }
+}
+
+.liquid-glass-navigation-heavy {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .liquid-glass-navigation-heavy {
+    background: rgba(20, 20, 20, 0.85);
+  }
+}
+
+/* ============================================================================
+   CONTENT LAYER (Solid)
+   ============================================================================ */
+
+.liquid-glass-content {
+  background: hsl(var(--background));
+  /* Solid background - no glass effect */
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+/* Glass card - for floating UI elements */
+.glass-card {
+  @apply liquid-glass-navigation rounded-xl;
+}
+
+/* Glass button - subtle glass effect for interactive elements */
+.glass-button {
+  @apply liquid-glass-navigation-light rounded-lg;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.65);
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-button:hover {
+    background: rgba(45, 45, 45, 0.65);
+  }
+}
+
+.glass-button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Glass input - for form fields */
+.glass-input {
+  @apply liquid-glass-navigation-light rounded-lg;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: hsl(var(--primary));
+  box-shadow:
+    0 0 0 3px hsla(var(--primary), 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  outline: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-input {
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .glass-input:focus {
+    background: rgba(50, 50, 50, 0.8);
+  }
+}
+
+/* Glass badge - for status indicators */
+.glass-badge {
+  @apply liquid-glass-navigation-heavy rounded-full px-3 py-1 text-xs font-medium;
+}
+
+/* Glass modal backdrop */
+.glass-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ============================================================================
+   SEMANTIC COMPONENT STYLES
+   ============================================================================ */
+
+/* Dialog overlay with glass backdrop */
+.dialog-overlay {
+  @apply glass-backdrop;
+}
+
+/* Dialog content with glass navigation layer */
+.dialog-content {
+  @apply liquid-glass-navigation rounded-2xl;
+  max-width: min(90vw, 600px);
+  max-height: min(85vh, 800px);
+}
+
+/* Popover with glass effect */
+.popover-content {
+  @apply liquid-glass-navigation rounded-xl;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  .popover-content {
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Category card with glass effect */
+.category-card {
+  @apply glass-card p-4;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.category-card:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.category-card:active {
+  transform: scale(0.98);
+}
+
+/* ============================================================================
+   ANIMATION UTILITIES
+   ============================================================================ */
+
+/* Smooth glass appearance */
+@keyframes glass-appear {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    transform: scale(1);
+  }
+}
+
+.glass-appear {
+  animation: glass-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Shimmer effect for loading states */
+@keyframes glass-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.glass-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: glass-shimmer 2s infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-navigation,
+  .glass-card,
+  .glass-button,
+  .glass-input,
+  .category-card {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .liquid-glass-navigation {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(0, 0, 0, 0.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .liquid-glass-navigation {
+      background: rgba(0, 0, 0, 0.95);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+  }
+}

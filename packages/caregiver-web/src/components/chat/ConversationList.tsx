@@ -10,8 +10,8 @@
 
 import * as React from "react";
 import { Plus, MessageSquare, Trash2, MoreVertical, Loader2 } from "lucide-react";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import { Button } from "~/components/ui/button";
+import { ScrollArea } from "@flynn-aac/shared-ui";
+import { Button } from "@flynn-aac/shared-ui";
 import { cn, formatMessageTime } from "~/lib/utils";
 import type { Conversation } from "./types";
 

@@ -12,6 +12,7 @@ import { authRoutes } from "./auth";
 import { goalsRoutes } from "./goals";
 import { sessionsRoutes } from "./sessions";
 import { adminRoutes } from "./admin";
+import { symbolsRoutes } from "./symbols";
 
 export const apiV1Routes = new Hono();
 
@@ -43,3 +44,4 @@ apiV1Routes.route("/sessions", sessionsRoutes);
 apiV1Routes.route("/conversations", conversationsRoutes);
 apiV1Routes.route("/notifications", notificationsRoutes);
 apiV1Routes.route("/admin", adminRoutes);
+apiV1Routes.route("/symbols", symbolsRoutes);

@@ -27,9 +27,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "~/components/ui/popover";
-import { Button } from "~/components/ui/button";
-import { ScrollArea } from "~/components/ui/scroll-area";
+} from "@flynn-aac/shared-ui";
+import { Button } from "@flynn-aac/shared-ui";
+import { ScrollArea } from "@flynn-aac/shared-ui";
 import { cn } from "~/lib/utils";
 import { useInsights, type Insight } from "./useInsights";
 

@@ -547,3 +547,96 @@ export const notes = pgTable("notes", {
 
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
+
+// ============================================================================
+// CUSTOM SYMBOLS (Phase: Custom Card Epic - FLY-81)
+// ============================================================================
+
+// Symbol categories - maps to Fitzgerald Key Color Coding system
+export const symbolCategories = pgTable("symbol_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  nameBulgarian: varchar("name_bulgarian", { length: 100 }),
+  colorName: varchar("color_name", { length: 50 }).notNull(), // fitzgerald key color name
+  colorHex: varchar("color_hex", { length: 7 }).notNull(), // #RRGGBB
+  icon: varchar("icon", { length: 50 }), // SF Symbol name or icon identifier
+  displayOrder: integer("display_order").notNull().default(0),
+  isSystem: boolean("is_system").notNull().default(true), // system categories vs custom
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("symbol_categories_order_idx").on(table.displayOrder),
+]);
+
+// Custom symbols created by caregivers
+export const customSymbols = pgTable("custom_symbols", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  childId: uuid("child_id")
+    .references(() => children.id, { onDelete: "cascade" })
+    .notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  nameBulgarian: varchar("name_bulgarian", { length: 100 }),
+  categoryId: uuid("category_id")
+    .references(() => symbolCategories.id, { onDelete: "set null" }),
+
+  // Image handling
+  imageSource: varchar("image_source", { length: 20 }).notNull(), // "upload" | "url" | "generate"
+  imageUrl: varchar("image_url", { length: 500 }), // CDN URL or external URL
+  imagePrompt: varchar("image_prompt", { length: 500 }), // For AI generation
+  imageKey: varchar("image_key", { length: 500 }), // Storage key (R2/S3 path)
+
+  // Approval workflow
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+
+  // Audit trail
+  createdBy: uuid("created_by")
+    .references(() => users.id, { onDelete: "set null" })
+    .notNull(),
+  approvedBy: uuid("approved_by")
+    .references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: uuid("rejected_by")
+    .references(() => users.id, { onDelete: "set null" }),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+
+  // Position in grid (optional)
+  gridPosition: integer("grid_position"),
+
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("custom_symbols_child_idx").on(table.childId),
+  index("custom_symbols_status_idx").on(table.status),
+  index("custom_symbols_child_status_idx").on(table.childId, table.status),
+  index("custom_symbols_created_idx").on(table.createdAt),
+]);
+
+// Approval history for audit trail
+export const symbolApprovals = pgTable("symbol_approvals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  symbolId: uuid("symbol_id")
+    .references(() => customSymbols.id, { onDelete: "cascade" })
+    .notNull(),
+  reviewerId: uuid("reviewer_id")
+    .references(() => users.id, { onDelete: "set null" })
+    .notNull(),
+  action: varchar("action", { length: 20 }).notNull(), // approved, rejected, requested_changes
+  comment: text("comment"), // Feedback for caregiver
+  previousStatus: varchar("previous_status", { length: 20 }).notNull(),
+  newStatus: varchar("new_status", { length: 20 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("symbol_approvals_symbol_idx").on(table.symbolId),
+  index("symbol_approvals_reviewer_idx").on(table.reviewerId),
+  index("symbol_approvals_created_idx").on(table.createdAt),
+]);
+
+export type SymbolCategory = typeof symbolCategories.$inferSelect;
+export type NewSymbolCategory = typeof symbolCategories.$inferInsert;
+
+export type CustomSymbol = typeof customSymbols.$inferSelect;
+export type NewCustomSymbol = typeof customSymbols.$inferInsert;
+
+export type SymbolApproval = typeof symbolApprovals.$inferSelect;
+export type NewSymbolApproval = typeof symbolApprovals.$inferInsert;

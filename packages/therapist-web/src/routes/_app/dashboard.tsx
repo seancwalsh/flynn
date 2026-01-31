@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { therapistApi, type TherapistClient } from "~/lib/api";
 import { useAuth } from "~/lib/auth";
+import { Card, Spinner } from "@flynn-aac/shared-ui";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
@@ -37,7 +38,7 @@ function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <Spinner size="lg" />
       </div>
     );
   }

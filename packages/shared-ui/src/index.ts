@@ -1,13 +1,15 @@
 /**
  * @flynn-aac/shared-ui
  * Shared React components for Flynn AAC platform
- *
- * This package will be expanded with common UI components as needed.
- * For now, it serves as a placeholder for future shared components like:
- * - Button, Card, Input, Select
- * - GoalCard, SessionCard, ClientCard
- * - Form components
  */
 
-// Placeholder - components will be added as we refactor
-export const version = "0.1.0";
+// Components
+export * from "./components/badge";
+export * from "./components/button";
+export * from "./components/card";
+export * from "./components/collapsible";
+export * from "./components/dialog";
+export * from "./components/input";
+export * from "./components/popover";
+export * from "./components/scroll-area";
+export * from "./components/spinner";

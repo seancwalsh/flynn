@@ -11,8 +11,8 @@
 import * as React from "react";
 import { useEffect, useRef, useCallback } from "react";
 import { ArrowDown, MessageSquare, Loader2 } from "lucide-react";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import { Button } from "~/components/ui/button";
+import { ScrollArea } from "@flynn-aac/shared-ui";
+import { Button } from "@flynn-aac/shared-ui";
 import { cn } from "~/lib/utils";
 import { MessageBubble } from "./MessageBubble";
 import type { Message } from "./types";

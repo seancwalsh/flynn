@@ -1,29 +1,31 @@
 /**
  * create_custom_symbol Tool
  *
- * Add a custom symbol to a child's AAC vocabulary.
+ * Add a custom symbol to a child's AAC vocabulary with approval workflow.
  *
- * IMPORTANT: This is a placeholder implementation. Full implementation
- * depends on FLY-81 (Custom Card Epic) which covers:
- * - Custom symbol storage in CloudKit
- * - AI image generation integration
- * - Symbol approval workflow
+ * Implemented features:
+ * - Custom symbol storage in PostgreSQL
+ * - Symbol approval workflow (pending → approved/rejected)
  * - Category management
+ * - Image URLs and upload support
  *
- * Current behavior: Returns a mock response to validate the tool interface.
- * The actual symbol creation will be implemented when the infrastructure
- * from FLY-81 is ready.
+ * Future enhancements:
+ * - AI image generation integration
+ * - Push notifications on approval
  */
 
 import { z } from "zod/v4";
 import type { Tool, ToolContext, ToolResult } from "@/types/claude";
 import { verifyChildAccess } from "../authorization";
+import { db } from "@/db";
+import { customSymbols, symbolCategories } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type ImageSource = "generate" | "url";
+export type ImageSource = "generate" | "url" | "upload";
 
 export interface CreatedSymbol {
   id: string;
@@ -34,11 +36,10 @@ export interface CreatedSymbol {
   imageSource: ImageSource;
   imageUrl: string | null;
   imagePrompt: string | null;
+  imageKey: string | null;
   status: "pending" | "approved" | "rejected";
-  createdAt: string;
-  updatedAt: string;
-  _mock: boolean;
-  _pendingImplementation: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ============================================================================
@@ -57,13 +58,18 @@ const inputSchema = z
       .max(100, "Bulgarian name cannot exceed 100 characters")
       .optional(),
     categoryId: z.uuid("Invalid category ID format"),
-    imageSource: z.enum(["generate", "url"]),
+    imageSource: z.enum(["generate", "url", "upload"]),
     imagePrompt: z
       .string()
       .min(10, "Image prompt must be at least 10 characters for good results")
       .max(500, "Image prompt cannot exceed 500 characters")
       .optional(),
     imageUrl: z.url("Invalid URL format").optional(),
+    imageKey: z
+      .string()
+      .max(500, "Image key cannot exceed 500 characters")
+      .optional(),
+    gridPosition: z.number().int().optional(),
   })
   .superRefine((data, ctx) => {
     // If imageSource is "generate", imagePrompt is required
@@ -82,6 +88,14 @@ const inputSchema = z
         path: ["imageUrl"],
       });
     }
+    // If imageSource is "upload", imageKey is required
+    if (data.imageSource === "upload" && !data.imageKey) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Image key is required when imageSource is 'upload'",
+        path: ["imageKey"],
+      });
+    }
   });
 
 type CreateCustomSymbolInput = z.infer<typeof inputSchema>;
@@ -97,48 +111,73 @@ async function createCustomSymbol(
   // 1. Verify authorization
   await verifyChildAccess(input.childId, context);
 
-  // 2. Validate image source consistency (Zod superRefine handles basic validation,
-  //    but we can add additional checks here if needed)
+  // 2. Verify category exists
+  const [category] = await db
+    .select()
+    .from(symbolCategories)
+    .where(eq(symbolCategories.id, input.categoryId))
+    .limit(1);
 
-  // Note: categoryId validation blocked on symbols/categories sync from iOS CloudKit
+  if (!category) {
+    return {
+      success: false,
+      error: `Category with ID ${input.categoryId} not found. Please use a valid category ID.`,
+    };
+  }
 
-  // FLY-81: Full implementation blocked on iOS integration, will include:
-  // - Calling AI image generation service if imageSource === 'generate'
-  // - Uploading generated/provided image to CloudKit
-  // - Creating symbol record in CloudKit
-  // - Syncing to child's AAC vocabulary
-  // - Handling approval workflow (parent/therapist approval)
+  // 3. Handle AI image generation (if requested)
+  let finalImageUrl = input.imageUrl ?? null;
+  if (input.imageSource === "generate") {
+    // TODO: Implement AI image generation with OpenAI DALL-E or similar
+    // For now, return error indicating feature is not yet available
+    return {
+      success: false,
+      error:
+        "AI image generation is not yet implemented. Please use imageSource 'url' or 'upload' instead.",
+    };
+  }
 
-  // For now, return a mock response to validate the interface
-  const now = new Date().toISOString();
-  const mockSymbol: CreatedSymbol = {
-    id: `symbol-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    childId: input.childId,
-    name: input.name,
-    nameBulgarian: input.nameBulgarian ?? null,
-    categoryId: input.categoryId,
-    imageSource: input.imageSource,
-    imageUrl: input.imageUrl ?? null,
-    imagePrompt: input.imagePrompt ?? null,
-    status: "pending", // Custom symbols start as pending until approved
-    createdAt: now,
-    updatedAt: now,
-    _mock: true,
-    _pendingImplementation: true, // Flag to indicate this awaits FLY-81
-  };
+  // 4. Construct image URL from imageKey if upload
+  if (input.imageSource === "upload" && input.imageKey) {
+    // TODO: Replace with actual R2 public URL once storage is configured
+    finalImageUrl = `https://placeholder-cdn.com/${input.imageKey}`;
+  }
+
+  // 5. Create custom symbol record
+  const [createdSymbol] = await db
+    .insert(customSymbols)
+    .values({
+      childId: input.childId,
+      name: input.name,
+      nameBulgarian: input.nameBulgarian,
+      categoryId: input.categoryId,
+      imageSource: input.imageSource,
+      imageUrl: finalImageUrl,
+      imagePrompt: input.imagePrompt,
+      imageKey: input.imageKey,
+      gridPosition: input.gridPosition,
+      status: "pending", // Custom symbols require approval
+      createdBy: context.userId,
+    })
+    .returning();
 
   const actionDescription =
-    input.imageSource === "generate"
-      ? `AI-generated image from prompt: "${input.imagePrompt?.slice(0, 50)}${(input.imagePrompt?.length ?? 0) > 50 ? "..." : ""}"`
-      : `using provided image URL`;
+    input.imageSource === "upload"
+      ? "uploaded image"
+      : input.imageSource === "url"
+        ? "provided image URL"
+        : "AI-generated image";
 
   return {
     success: true,
     data: {
-      symbol: mockSymbol,
-      message: `Successfully created custom symbol "${input.name}" (pending approval). Image: ${actionDescription}`,
-      notice:
-        "Note: Full custom symbol creation is coming soon (FLY-81). This is a placeholder response.",
+      symbol: createdSymbol,
+      message: `Successfully created custom symbol "${input.name}" in category "${category.name}" using ${actionDescription}. Status: Pending approval by therapist/admin.`,
+      nextSteps: [
+        "Symbol is pending approval and will not appear in the AAC app yet",
+        "A therapist or admin must review and approve the symbol",
+        "Once approved, it will automatically sync to the iPad app",
+      ],
     },
   };
 }
@@ -150,7 +189,7 @@ async function createCustomSymbol(
 export const createCustomSymbolTool: Tool<CreateCustomSymbolInput> = {
   name: "create_custom_symbol",
   description:
-    "Add a custom symbol to a child's AAC vocabulary. Symbols can be created by providing an image URL or by generating an image using AI. Custom symbols require approval before appearing in the child's AAC app. Note: Full implementation pending FLY-81.",
+    "Add a custom symbol to a child's AAC vocabulary. Symbols can be created by providing an image URL, uploading an image (via imageKey), or generating an image using AI (coming soon). Custom symbols require therapist/admin approval before appearing in the child's AAC app.",
   inputSchema,
   execute: createCustomSymbol,
 };

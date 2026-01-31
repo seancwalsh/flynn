@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "~/lib/auth";
 import { useEffect } from "react";
+import { Button } from "@flynn-aac/shared-ui";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -36,12 +37,13 @@ function LoginPage() {
         <h2 className="text-2xl font-bold text-center mb-6">Therapist Login</h2>
 
         <div className="space-y-4">
-          <button
+          <Button
             onClick={handleLogin}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            className="w-full"
+            size="lg"
           >
             Sign In (Dev Mode)
-          </button>
+          </Button>
 
           <p className="text-sm text-gray-600 text-center">
             Production: This will integrate with Clerk authentication

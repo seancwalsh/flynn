@@ -11,7 +11,7 @@
 import * as React from "react";
 import { useRef, useCallback, useEffect } from "react";
 import { Send, Square, Loader2 } from "lucide-react";
-import { Button } from "~/components/ui/button";
+import { Button } from "@flynn-aac/shared-ui";
 import { cn } from "~/lib/utils";
 
 export interface ChatInputProps {

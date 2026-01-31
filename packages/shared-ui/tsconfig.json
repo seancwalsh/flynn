@@ -4,11 +4,8 @@
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "composite": false
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../shared-types" },
-    { "path": "../shared-utils" }
-  ]
+  "include": ["src/**/*"]
 }

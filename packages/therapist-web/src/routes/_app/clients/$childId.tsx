@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { childrenApi, goalsApi, sessionsApi, type Child, type Goal, type TherapySession, type TherapyType } from "~/lib/api";
+import { Button, Card, CardHeader, CardContent, CardTitle, Spinner, Badge, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@flynn-aac/shared-ui";
 
 export const Route = createFileRoute("/_app/clients/$childId")({
   component: ClientDetailPage,
@@ -38,7 +39,7 @@ function ClientDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -67,12 +68,12 @@ function ClientDetailPage() {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900">Therapy Goals</h2>
-              <button
+              <Button
                 onClick={() => setShowGoalForm(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                size="sm"
               >
                 Add Goal
-              </button>
+              </Button>
             </div>
 
             {goals.length === 0 ? (

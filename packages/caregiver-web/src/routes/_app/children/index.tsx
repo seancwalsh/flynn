@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { childrenApi, familiesApi, type Child, type CreateChildInput } from "~/lib/api";
 import { ChildCard } from "~/components/children/ChildCard";
 import { AddChildModal } from "~/components/children/AddChildModal";
-import { Button } from "~/components/ui/button";
+import { Button } from "@flynn-aac/shared-ui";
 
 export const Route = createFileRoute("/_app/children/")({
   component: ChildrenPage,
