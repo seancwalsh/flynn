@@ -104,7 +104,7 @@ symbolsRoutes.post(
 // ============================================================================
 
 // Get custom symbols for a child (approved only, or include pending if caregiver/therapist)
-symbolsRoutes.get("/:childId", requireChildAccess(), async (c) => {
+symbolsRoutes.get("/:childId", requireChildAccess("childId"), async (c) => {
   const childId = c.req.param("childId");
   const status = c.req.query("status"); // optional filter
   const user = c.get("user");

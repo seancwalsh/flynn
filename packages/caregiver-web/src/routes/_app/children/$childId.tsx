@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, Outlet } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { childrenApi, goalsApi, type ChildWithProgress, type ChildStats, type Goal, type CreateGoalInput, type UpdateGoalInput, type TherapyType, type GoalStatus } from "~/lib/api";
 import { Button } from "@flynn-aac/shared-ui";
@@ -355,6 +355,9 @@ function ChildDetailPage() {
           onSubmit={(input) => handleUpdateGoal(editingGoal.id, input)}
         />
       )}
+
+      {/* Child routes (like /symbols) render here */}
+      <Outlet />
     </div>
   );
 }
