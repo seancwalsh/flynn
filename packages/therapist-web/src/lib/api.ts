@@ -128,5 +128,78 @@ export const sessionsApi = {
   },
 };
 
+// Symbols types
+export interface SymbolCategory {
+  id: string;
+  name: string;
+  nameBulgarian: string | null;
+  colorName: string;
+  colorHex: string;
+  icon: string | null;
+  displayOrder: number;
+  isSystem: boolean;
+  createdAt: string;
+}
+
+export interface CustomSymbol {
+  id: string;
+  childId: string;
+  name: string;
+  nameBulgarian: string | null;
+  categoryId: string;
+  imageSource: "upload" | "url" | "generate";
+  imageUrl: string | null;
+  imagePrompt: string | null;
+  imageKey: string | null;
+  status: "pending" | "approved" | "rejected";
+  gridPosition: number | null;
+  createdBy: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomSymbolWithCategory extends CustomSymbol {
+  category: {
+    id: string;
+    name: string;
+    colorName: string;
+    colorHex: string;
+  } | null;
+}
+
+export interface ReviewSymbolInput {
+  action: "approve" | "reject" | "request_changes";
+  comment?: string;
+}
+
+// Symbols API (therapist functions only)
+export const symbolsApi = {
+  // Get pending symbols for approval (therapists only)
+  async getPendingSymbols(): Promise<ApiResponse<{ data: CustomSymbolWithCategory[] }>> {
+    return fetchApi<{ data: CustomSymbolWithCategory[] }>("/symbols/pending/all");
+  },
+
+  // Review symbol (approve/reject)
+  async reviewSymbol(
+    id: string,
+    input: ReviewSymbolInput
+  ): Promise<ApiResponse<{ data: CustomSymbol }>> {
+    return fetchApi<{ data: CustomSymbol }>(`/symbols/custom/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  // Get approval history
+  async getApprovalHistory(id: string): Promise<ApiResponse<{ data: any[] }>> {
+    return fetchApi<{ data: any[] }>(`/symbols/custom/${id}/approvals`);
+  },
+};
+
 // Re-export types for backward compatibility
 export type { Child, Goal, TherapySession, TherapistClient, ApiResponse, TherapyType, GoalStatus };

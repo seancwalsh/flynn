@@ -6,7 +6,7 @@
  */
 
 import { getTestDb } from "../setup";
-import { users, families, children, caregivers, therapists, therapistClients, usageLogs, insights, goals, therapySessions, notes } from "../../db/schema";
+import { users, families, children, caregivers, therapists, therapistClients, usageLogs, insights, goals, therapySessions, notes, symbolCategories, customSymbols } from "../../db/schema";
 
 /**
  * Create a test family and return its data
@@ -216,14 +216,14 @@ export async function createTestNote(
 export async function createCompleteTestFamily() {
   const family = await createTestFamily({ name: "Complete Test Family" });
   if (!family) throw new Error("Failed to create test family");
-  
+
   const child = await createTestChild(family.id, { name: "Test Child", birthDate: "2021-06-15" });
   if (!child) throw new Error("Failed to create test child");
-  
+
   const caregiver = await createTestCaregiver(family.id, { role: "parent" });
   const logs = await createTestUsageLogs(child.id, 10);
   const insight = await createTestInsight(child.id);
-  
+
   return {
     family,
     child,
@@ -231,4 +231,66 @@ export async function createCompleteTestFamily() {
     logs,
     insight,
   };
+}
+
+/**
+ * Create a test symbol category (Fitzgerald Key color-coded)
+ */
+export async function createTestSymbolCategory(
+  overrides: {
+    name?: string;
+    nameBulgarian?: string;
+    colorName?: string;
+    colorHex?: string;
+    icon?: string;
+    displayOrder?: number;
+    isSystem?: boolean;
+  } = {}
+) {
+  const db = getTestDb();
+  const [category] = await db.insert(symbolCategories).values({
+    name: overrides.name ?? "Test Category",
+    nameBulgarian: overrides.nameBulgarian ?? "Тест Категория",
+    colorName: overrides.colorName ?? "yellow",
+    colorHex: overrides.colorHex ?? "#FFD54F",
+    icon: overrides.icon ?? "person.fill",
+    displayOrder: overrides.displayOrder ?? 1,
+    isSystem: overrides.isSystem ?? true,
+  }).returning();
+  return category;
+}
+
+/**
+ * Create a test custom symbol for a child
+ */
+export async function createTestCustomSymbol(
+  childId: string,
+  categoryId: string,
+  createdBy: string,
+  overrides: {
+    name?: string;
+    nameBulgarian?: string;
+    imageSource?: "upload" | "url" | "generate";
+    imageUrl?: string;
+    imagePrompt?: string;
+    imageKey?: string;
+    status?: "pending" | "approved" | "rejected";
+    gridPosition?: number;
+  } = {}
+) {
+  const db = getTestDb();
+  const [symbol] = await db.insert(customSymbols).values({
+    childId,
+    categoryId,
+    createdBy,
+    name: overrides.name ?? "Test Symbol",
+    nameBulgarian: overrides.nameBulgarian ?? null,
+    imageSource: overrides.imageSource ?? "url",
+    imageUrl: overrides.imageUrl ?? "https://example.com/test.png",
+    imagePrompt: overrides.imagePrompt ?? null,
+    imageKey: overrides.imageKey ?? null,
+    status: overrides.status ?? "pending",
+    gridPosition: overrides.gridPosition ?? null,
+  }).returning();
+  return symbol;
 }
