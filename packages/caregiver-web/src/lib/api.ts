@@ -357,3 +357,169 @@ export const goalsApi = {
     });
   },
 };
+
+// Symbols types
+export interface SymbolCategory {
+  id: string;
+  name: string;
+  nameBulgarian: string | null;
+  colorName: string;
+  colorHex: string;
+  icon: string | null;
+  displayOrder: number;
+  isSystem: boolean;
+  createdAt: string;
+}
+
+export interface CustomSymbol {
+  id: string;
+  childId: string;
+  name: string;
+  nameBulgarian: string | null;
+  categoryId: string;
+  imageSource: "upload" | "url" | "generate";
+  imageUrl: string | null;
+  imagePrompt: string | null;
+  imageKey: string | null;
+  status: "pending" | "approved" | "rejected";
+  gridPosition: number | null;
+  createdBy: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomSymbolWithCategory extends CustomSymbol {
+  category: {
+    id: string;
+    name: string;
+    colorName: string;
+    colorHex: string;
+  } | null;
+}
+
+export interface CreateCustomSymbolInput {
+  childId: string;
+  name: string;
+  nameBulgarian?: string;
+  categoryId: string;
+  imageSource: "upload" | "url" | "generate";
+  imageUrl?: string;
+  imagePrompt?: string;
+  imageKey?: string;
+  gridPosition?: number;
+}
+
+export interface UpdateCustomSymbolInput {
+  name?: string;
+  nameBulgarian?: string;
+  categoryId?: string;
+  imageUrl?: string;
+  gridPosition?: number;
+}
+
+export interface ReviewSymbolInput {
+  action: "approve" | "reject" | "request_changes";
+  comment?: string;
+}
+
+export interface UploadUrlResponse {
+  uploadUrl: string;
+  imageKey: string;
+  publicUrl: string;
+  expiresIn: number;
+}
+
+export interface CreateCategoryInput {
+  name: string;
+  nameBulgarian?: string;
+  colorName: string;
+  colorHex: string;
+  icon?: string;
+  displayOrder?: number;
+}
+
+// Symbols API
+export const symbolsApi = {
+  // Categories
+  async getCategories(): Promise<ApiResponse<{ data: SymbolCategory[] }>> {
+    return fetchApi<{ data: SymbolCategory[] }>("/symbols/categories");
+  },
+
+  async createCategory(input: CreateCategoryInput): Promise<ApiResponse<{ data: SymbolCategory }>> {
+    return fetchApi<{ data: SymbolCategory }>("/symbols/categories", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  // Custom Symbols
+  async getCustomSymbols(
+    childId: string,
+    status?: "pending" | "approved" | "rejected"
+  ): Promise<ApiResponse<{ data: CustomSymbolWithCategory[] }>> {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return fetchApi<{ data: CustomSymbolWithCategory[] }>(`/symbols/${childId}${query}`);
+  },
+
+  async createCustomSymbol(
+    input: CreateCustomSymbolInput
+  ): Promise<ApiResponse<{ data: CustomSymbol }>> {
+    return fetchApi<{ data: CustomSymbol }>("/symbols/custom", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async updateCustomSymbol(
+    id: string,
+    input: UpdateCustomSymbolInput
+  ): Promise<ApiResponse<{ data: CustomSymbol }>> {
+    return fetchApi<{ data: CustomSymbol }>(`/symbols/custom/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async deleteCustomSymbol(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    return fetchApi<{ success: boolean }>(`/symbols/custom/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  // Approval workflow
+  async getPendingSymbols(): Promise<ApiResponse<{ data: CustomSymbolWithCategory[] }>> {
+    return fetchApi<{ data: CustomSymbolWithCategory[] }>("/symbols/pending/all");
+  },
+
+  async reviewSymbol(
+    id: string,
+    input: ReviewSymbolInput
+  ): Promise<ApiResponse<{ data: CustomSymbol }>> {
+    return fetchApi<{ data: CustomSymbol }>(`/symbols/custom/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async getApprovalHistory(id: string): Promise<ApiResponse<{ data: any[] }>> {
+    return fetchApi<{ data: any[] }>(`/symbols/custom/${id}/approvals`);
+  },
+
+  // Image upload
+  async getUploadUrl(
+    childId: string,
+    input: { filename: string; contentType: string }
+  ): Promise<ApiResponse<UploadUrlResponse>> {
+    return fetchApi<UploadUrlResponse>(`/symbols/${childId}/upload-url`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+};
