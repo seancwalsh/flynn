@@ -32,8 +32,8 @@ function SymbolApprovalsPage() {
         return;
       }
 
-      if (response.data?.data) {
-        setPendingSymbols(response.data.data);
+      if (response.data) {
+        setPendingSymbols(response.data);
       }
     } catch (err) {
       setError("Failed to load pending symbols");
@@ -164,17 +164,20 @@ function SymbolApprovalsPage() {
           disabled={isProcessing}
         />
 
-        {/* Swipe hint */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm text-muted-foreground flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <ChevronLeft className="w-4 h-4" />
-            Swipe left to reject
-          </span>
-          <span>|</span>
-          <span className="flex items-center gap-1">
-            Swipe right to approve
-            <ChevronRight className="w-4 h-4" />
-          </span>
+        {/* Swipe hint - positioned below card */}
+        <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+          <p className="text-sm text-muted-foreground whitespace-nowrap">Swipe or tap buttons to review</p>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <span className="flex items-center gap-2 whitespace-nowrap">
+              <ChevronLeft className="w-4 h-4" />
+              <span>Reject</span>
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-2 whitespace-nowrap">
+              <span>Approve</span>
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -223,104 +226,110 @@ function SwipeableCard({
       className="absolute inset-0 cursor-grab active:cursor-grabbing"
       data-testid={`symbol-card-${symbol.id}`}
     >
-      <Card className="h-full liquid-glass-navigation p-6 flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-bold">{symbol.name}</h3>
-            {symbol.nameBulgarian && (
-              <p className="text-muted-foreground">{symbol.nameBulgarian}</p>
-            )}
+      <Card className="h-full liquid-glass-navigation p-6">
+        {/* CSS Grid Layout: header | preview | metadata | buttons */}
+        <div className="h-full grid grid-rows-[auto_1fr_auto_auto] gap-6">
+          {/* Header Row */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-xl font-bold">{symbol.name}</h3>
+              {symbol.nameBulgarian && (
+                <p className="text-muted-foreground">{symbol.nameBulgarian}</p>
+              )}
+            </div>
+            <div
+              className="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+              style={{
+                backgroundColor: symbol.category?.colorHex
+                  ? `${symbol.category.colorHex}20`
+                  : "#f0f0f0",
+                color: symbol.category?.colorHex || "#000",
+              }}
+            >
+              {symbol.category?.name || "Uncategorized"}
+            </div>
           </div>
-          <div
-            className="px-3 py-1 rounded-full text-xs font-medium"
-            style={{
-              backgroundColor: symbol.category?.colorHex
-                ? `${symbol.category.colorHex}20`
-                : "#f0f0f0",
-              color: symbol.category?.colorHex || "#000",
-            }}
-          >
-            {symbol.category?.name || "Uncategorized"}
-          </div>
-        </div>
 
-        {/* Symbol preview */}
-        <div className="flex-1 flex items-center justify-center mb-6">
-          <div
-            className="w-64 h-64 rounded-2xl p-6 border-4"
-            style={{
-              backgroundColor: symbol.category?.colorHex
-                ? `${symbol.category.colorHex}20`
-                : "#f0f0f0",
-              borderColor: symbol.category?.colorHex || "#e0e0e0",
-            }}
-          >
-            {symbol.imageUrl ? (
-              <img
-                src={symbol.imageUrl}
-                alt={symbol.name}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                No image
+          {/* Symbol Preview Row (flex-1 equivalent via grid-rows-[auto_1fr_auto_auto]) */}
+          <div className="flex items-center justify-center">
+            <div
+              className="w-64 h-64 rounded-2xl p-6 border-4"
+              style={{
+                backgroundColor: symbol.category?.colorHex
+                  ? `${symbol.category.colorHex}20`
+                  : "#f0f0f0",
+                borderColor: symbol.category?.colorHex || "#e0e0e0",
+              }}
+            >
+              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+                <div className="text-6xl font-bold opacity-20">
+                  {symbol.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-center">
+                  <div className="font-medium text-lg">{symbol.name}</div>
+                  {symbol.nameBulgarian && (
+                    <div className="text-sm text-muted-foreground">{symbol.nameBulgarian}</div>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground opacity-60">
+                  {symbol.imageSource === 'upload' && 'Image will be uploaded'}
+                  {symbol.imageSource === 'url' && 'Image from URL'}
+                  {symbol.imageSource === 'generate' && 'AI generated image'}
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
 
-        {/* Metadata */}
-        <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-          <div>
-            <p className="text-muted-foreground">Created</p>
-            <p className="font-medium">
-              {new Date(symbol.createdAt).toLocaleDateString()}
-            </p>
+          {/* Metadata Row */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Created</p>
+              <p className="font-medium">
+                {new Date(symbol.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Image Source</p>
+              <p className="font-medium capitalize">{symbol.imageSource}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-muted-foreground">Image Source</p>
-            <p className="font-medium capitalize">{symbol.imageSource}</p>
+
+          {/* Action Buttons Row */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
+            <Button
+              variant="destructive"
+              size="lg"
+              onClick={() => onReject()}
+              disabled={disabled}
+              data-testid="reject-button"
+            >
+              <X className="w-5 h-5 mr-2" />
+              Reject
+            </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                // TODO: Show quick edit modal
+              }}
+              disabled={disabled}
+              data-testid="edit-button"
+            >
+              <Edit2 className="w-5 h-5" />
+            </Button>
+
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => onApprove("Looks good!")}
+              disabled={disabled}
+              data-testid="approve-button"
+            >
+              <Check className="w-5 h-5 mr-2" />
+              Approve
+            </Button>
           </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            className="flex-1 border-red-500 text-red-500 hover:bg-red-50"
-            onClick={() => onReject()}
-            disabled={disabled}
-            data-testid="reject-button"
-          >
-            <X className="w-5 h-5 mr-2" />
-            Reject
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => {
-              // TODO: Show quick edit modal
-            }}
-            disabled={disabled}
-            data-testid="edit-button"
-          >
-            <Edit2 className="w-5 h-5" />
-          </Button>
-
-          <Button
-            variant="default"
-            size="lg"
-            className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-            onClick={() => onApprove("Looks good!")}
-            disabled={disabled}
-            data-testid="approve-button"
-          >
-            <Check className="w-5 h-5 mr-2" />
-            Approve
-          </Button>
         </div>
       </Card>
     </motion.div>

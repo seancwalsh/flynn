@@ -21,6 +21,9 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET_NAME: z.string().default("flynn-aac-symbols"),
   R2_PUBLIC_URL: z.string().optional(), // Public URL for uploaded images
+
+  // Symbol Approval Settings
+  REQUIRE_SYMBOL_APPROVAL: z.coerce.boolean().default(true), // Set to false to auto-approve all symbols
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -5,8 +5,10 @@ import { db } from "../../../db";
 import { customSymbols, symbolCategories, symbolApprovals } from "../../../db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
-import { requireChildAccess, requireAuth } from "../../../middleware/authorization";
+import { requireAuth } from "../../../middleware/auth";
+import { requireChildAccess } from "../../../middleware/authorization";
 import { generatePresignedUploadUrl, isStorageConfigured } from "../../../services/storage";
+import { env } from "../../../config/env";
 
 export const symbolsRoutes = new Hono();
 
@@ -174,6 +176,10 @@ symbolsRoutes.post(
       throw new AppError("imageKey is required when imageSource is 'upload'", 400, "VALIDATION_ERROR");
     }
 
+    // Auto-approve if REQUIRE_SYMBOL_APPROVAL is false (for families without therapist access)
+    const initialStatus = env.REQUIRE_SYMBOL_APPROVAL ? "pending" : "approved";
+    const now = new Date();
+
     const [symbol] = await db
       .insert(customSymbols)
       .values({
@@ -186,8 +192,11 @@ symbolsRoutes.post(
         imagePrompt: data.imagePrompt,
         imageKey: data.imageKey,
         gridPosition: data.gridPosition,
-        status: "pending",
+        status: initialStatus,
         createdBy: user.id,
+        // Auto-approve fields if not requiring approval
+        approvedBy: env.REQUIRE_SYMBOL_APPROVAL ? null : user.id,
+        approvedAt: env.REQUIRE_SYMBOL_APPROVAL ? null : now,
       })
       .returning();
 
@@ -274,6 +283,7 @@ symbolsRoutes.get("/pending/all", requireAuth(), async (c) => {
       childId: customSymbols.childId,
       name: customSymbols.name,
       nameBulgarian: customSymbols.nameBulgarian,
+      imageSource: customSymbols.imageSource,
       imageUrl: customSymbols.imageUrl,
       status: customSymbols.status,
       createdAt: customSymbols.createdAt,
