@@ -6,6 +6,7 @@ import { customSymbols, symbolCategories, symbolApprovals } from "../../../db/sc
 import { eq, and, desc, sql } from "drizzle-orm";
 import { AppError } from "../../../middleware/error-handler";
 import { requireChildAccess, requireAuth } from "../../../middleware/authorization";
+import { generatePresignedUploadUrl, isStorageConfigured } from "../../../services/storage";
 
 export const symbolsRoutes = new Hono();
 
@@ -365,24 +366,34 @@ symbolsRoutes.get("/custom/:id/approvals", requireAuth(), async (c) => {
 // IMAGE UPLOAD (Presigned URL)
 // ============================================================================
 
-// Get presigned URL for image upload (to be implemented with R2)
+// Get presigned URL for image upload to R2
 symbolsRoutes.post(
   "/:childId/upload-url",
   requireChildAccess(),
   zValidator("json", getUploadUrlSchema),
   async (c) => {
     const childId = c.req.param("childId");
-    const { filename, contentType } = c.req.valid("json");
+    const { contentType } = c.req.valid("json");
 
-    // TODO: Implement R2 presigned URL generation
-    // For now, return mock response
-    const imageKey = `custom-symbols/${childId}/${Date.now()}-${filename}`;
+    // Check if R2 is configured
+    if (!isStorageConfigured()) {
+      // Return mock URL for development
+      const imageKey = `custom-symbols/${childId}/${Date.now()}-mock.jpg`;
+      return c.json({
+        uploadUrl: `https://placeholder-upload-url.com/${imageKey}`,
+        imageKey,
+        publicUrl: `https://placeholder-cdn.com/${imageKey}`,
+        expiresIn: 3600,
+        _mock: true,
+      });
+    }
 
-    return c.json({
-      uploadUrl: `https://placeholder-upload-url.com/${imageKey}`,
-      imageKey,
-      publicUrl: `https://placeholder-cdn.com/${imageKey}`,
-      expiresIn: 3600,
+    // Generate real presigned URL
+    const result = await generatePresignedUploadUrl({
+      childId,
+      contentType,
     });
+
+    return c.json(result);
   }
 );

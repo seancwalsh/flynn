@@ -15,9 +15,12 @@ const envSchema = z.object({
   // Anthropic API
   ANTHROPIC_API_KEY: z.string().optional(),
 
-  // Clerk
-  CLERK_PUBLISHABLE_KEY: z.string().optional(),
-  CLERK_SECRET_KEY: z.string().optional(),
+  // Cloudflare R2 Storage
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().default("flynn-aac-symbols"),
+  R2_PUBLIC_URL: z.string().optional(), // Public URL for uploaded images
 });
 
 const parsed = envSchema.safeParse(process.env);
