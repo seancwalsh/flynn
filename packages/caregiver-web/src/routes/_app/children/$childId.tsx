@@ -290,9 +290,11 @@ function ChildDetailPage() {
             <History className="h-4 w-4" />
             View Usage History
           </Button>
-          <Button variant="outline" disabled className="justify-start gap-2">
-            <Grid3x3 className="h-4 w-4" />
-            Customize Symbol Board
+          <Button asChild variant="outline" className="justify-start gap-2">
+            <Link to="/children/$childId/symbols" params={{ childId }}>
+              <Grid3x3 className="h-4 w-4" />
+              Customize Symbol Board
+            </Link>
           </Button>
         </div>
       </div>
